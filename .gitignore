@@ -1,0 +1,13 @@
+# Planilhas brutas e arquivos de trabalho: ficam só no computador (OneDrive), não vão para o GitHub
+Dados/
+dCentros/
+Instruções-Regras/
+*.xlsx
+~$*
+*.tmp
+__pycache__/
+*.pyc
+desktop.ini
+
+# Configuração local do Claude
+.claude/
