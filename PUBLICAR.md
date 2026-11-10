@@ -1,7 +1,7 @@
 # Publicar o SUPER DESAFIO CSAT no GitHub Pages
 
-Repositório: https://github.com/fabio-paulo-silva/SUPER-DESAGIO-CSAT
-Endereço: https://fabio-paulo-silva.github.io/SUPER-DESAGIO-CSAT/
+Repositório: https://github.com/fabio-paulo-silva/SUPER-DESAFIO-CSAT
+Endereço: https://fabio-paulo-silva.github.io/SUPER-DESAFIO-CSAT/
 
 A cada `push` na `main`, o GitHub Actions (`.github/workflows/pages.yml`) publica `index.html`, `motor.js` e `dados.js`.
 

@@ -950,6 +950,7 @@ function insightsPDV(x){
   return { ontem, nov, diasNov, serie, ultima, diasSem, imp45, imp13, metaHoje, metaHojeProm, pctNec, pctNov, pctOntem, det, piorDimNov, piorDimAno, ritmoNov,
     metaDia: x.temPlano && x.porDia>0 ? x.porDia : 0,
     metaTxt: !x.temPlano || !(x.porDia>0) ? '0' : x.porDia>=1 ? fI(metaHoje) : '1 a cada ' + fI(Math.round(1/x.porDia)) + ' dias',
+    hoje: D.parcial ? D.linhas.filter((l)=>l[0]===D.parcial.dia && l[1]===Number(x.cod)).reduce((a,l)=>a+l[2].reduce((s,v)=>s+v,0),0) : null,
     atingOntem: x.porDia>0 ? ontem.resp/x.porDia : null, atingRitmo: x.porDia>0 ? ritmoNov/x.porDia : null,
     gap: x.totalAtual!=null ? R.params.meta - x.totalAtual : null };
 }
@@ -1021,7 +1022,9 @@ function renderHero(pz){
       `<span class="delta ${gap>0?'down':'up'}"><i data-lucide="${gap>0?'trending-down':'trending-up'}"></i>${gap>0?'−':'+'}${fPP(Math.abs(gap))}</span><span>meta ${fP(p.meta,0)} · teto na média ${fP(R.teto.total)}</span>`,
       `<div class="prog" aria-hidden="true"><i class="${gap>0?'bad':''}" style="width:${pos(R.atual.total)}%"></i><b style="left:${pos(p.meta)}%"></b></div>`) +
     kpi(`Meta de hoje · ${dow(p.inicioPlano)} ${fD(p.inicioPlano)}`, `${metaHojeTxt} <small>respostas</small>`, 'target', 't-accent',
-      `<span>${metaDiaP>=1 ? plural(metaHojeProm,'nota','notas')+' 4–5' : 'média/dia'} · ${p.dias} dias até ${fD(p.fim)}</span>`) +
+      (D.parcial && D.parcial.dia===p.inicioPlano ? (() => { const h = Is.reduce((a,I)=>a+(I.hoje||0),0); const at = metaDiaP>0 ? h/metaDiaP : null;
+        return `<span class="delta ${deltaCls(at)}">hoje até ${esc(D.parcial.ate)}: ${fI(h)}</span><span>${pctAting(at)} da meta</span>`; })()
+        : `<span>${metaDiaP>=1 ? plural(metaHojeProm,'nota','notas')+' 4–5' : 'média/dia'} · ${p.dias} dias até ${fD(p.fim)}</span>`)) +
     kpi(`Realizado ontem · ${fD(p.corte)}`, `${fI(ontem)} <small>${ontem===1?'resposta':'respostas'}</small>`, 'check-check', 't-primary',
       `<span class="delta ${deltaCls(ating)}">${pctAting(ating)} da meta</span>`) +
     kpi('Premiação', `${fR(pz.hoje)} <small>de ${fR(pz.emJogo)}</small>`, 'trophy', 't-warning',
@@ -1058,7 +1061,7 @@ function renderHero(pz){
         <div class="dims">${x.dimsUso.filter((d)=>x.csatBase[d]!=null).map((d)=>`<span${x.congeladas.includes(d)?' title="sem respostas novas"':''}>${DNs[d]} <b>${fP(x.csatBase[d])}</b></span>`).join('')}</div></div>
       ${bullet(x.totalAtual, x.totalTeto, x.totalFinal, p.meta)}
       <div class="trio">
-        <div class="t hi"><div class="k">Meta hoje</div><div class="v">${I.metaDia>=1||!I.metaDia ? fI(I.metaHoje) : '<small>'+I.metaTxt+'</small>'}</div><div class="d">${I.metaDia>=1 ? `${plural(I.metaHojeProm,'nota','notas')} 4–5` : I.metaDia>0 ? `~${f1(I.metaDia)}/dia` : 'na meta'}</div></div>
+        <div class="t hi"><div class="k">Meta hoje</div><div class="v">${I.metaDia>=1||!I.metaDia ? fI(I.metaHoje) : '<small>'+I.metaTxt+'</small>'}</div><div class="d">${I.metaDia>=1 ? `${plural(I.metaHojeProm,'nota','notas')} 4–5` : I.metaDia>0 ? `~${f1(I.metaDia)}/dia` : 'na meta'}${I.hoje!=null && D.parcial.dia===p.inicioPlano ? ` · <b>${fI(I.hoje)} até ${esc(D.parcial.ate)}</b>` : ''}</div></div>
         <div class="t"><div class="k">Ontem</div><div class="v">${fI(I.ontem.resp)}</div><div class="d">${I.metaDia>0?`<span class="badge ${atingCls(I.atingOntem)}">${pctAting(I.atingOntem)}</span>`:''}</div></div>
         <div class="t"><div class="k">Novembro</div><div class="v">${f1(I.ritmoNov)}<small>/dia</small></div><div class="d">${x.porDia>0?`<span class="badge ${atingCls(I.atingRitmo)}">${pctAting(I.atingRitmo)}</span>`:''}${I.pctNov!=null?`<span>${fP(I.pctNov,0)} 4–5</span>`:''}</div></div>
       </div>

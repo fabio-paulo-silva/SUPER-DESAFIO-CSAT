@@ -180,9 +180,17 @@ def main():
             unidades[cod]["praca"] = sigla
 
     ultimo = df["data"].max()
+    # Se a base vai até HOJE, o dia de hoje está incompleto: o corte fica em ontem
+    # (meta de hoje = dia de hoje) e o que já entrou hoje vai em "parcial".
+    corte = ultimo.normalize()
+    parcial = None
+    if corte.date() >= datetime.now().date():
+        parcial = {"dia": corte.strftime("%Y-%m-%d"), "ate": ultimo.strftime("%H:%M")}
+        corte = corte - pd.Timedelta(days=1)
     saida = {
         "gerado_em": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "corte": ultimo.strftime("%Y-%m-%d"),
+        "corte": corte.strftime("%Y-%m-%d"),
+        "parcial": parcial,
         "ultima_resposta": ultimo.strftime("%Y-%m-%d %H:%M"),
         "config": CONFIG,
         "unidades": unidades,

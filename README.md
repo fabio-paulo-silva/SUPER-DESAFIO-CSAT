@@ -2,7 +2,7 @@
 
 Painel de acompanhamento do desafio CSAT: cada PDV (ERs, HUB e Híbridas) e cada praça fechando **89% de CSAT TOTAL até 30/11/2026**.
 
-Endereço: https://fabio-paulo-silva.github.io/SUPER-DESAGIO-CSAT/
+Endereço: https://fabio-paulo-silva.github.io/SUPER-DESAFIO-CSAT/
 
 ## Abas
 - **Plano do dia:** KPIs da praça, prioridades, meta de hoje (diarização) e atingimento por PDV.
