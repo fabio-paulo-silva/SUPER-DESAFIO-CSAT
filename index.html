@@ -452,6 +452,10 @@ details.card>summary{margin:0}
   <section class="card filter"><div class="row">
     <div class="fld"><label>Praça</label><div class="ptabs" id="tabs"></div></div>
     <div class="fld"><label for="fGvo">Gerente</label><select id="fGvo"></select></div>
+    <div class="fld"><label for="fLoja">Loja</label><select id="fLoja"></select></div>
+    <div class="fld"><label for="fMes">Mês</label><select id="fMes"></select></div>
+    <div class="fld"><label for="fDia">Dia</label><select id="fDia"></select></div>
+    <button class="btn ghost sm" type="button" id="fLimpar" hidden style="align-self:flex-end"><i data-lucide="rotate-ccw"></i>Limpar</button>
   </div></section>
 
   <section class="kpis" id="kpis" aria-live="polite"></section>
@@ -576,7 +580,7 @@ const dow = (iso) => DOWL[new Date(iso+'T12:00:00Z').getUTCDay()];
 const esc = (s) => String(s).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ---------- estado
-const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
+const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', mes:'', dia:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
 let S = Object.assign({}, PADRAO);
 try { const s = JSON.parse(localStorage.getItem('csat_desafio_estado')||'null'); if (s) S = Object.assign(S, {praca:s.praca||S.praca, heat:s.heat||S.heat, view:s.view||S.view}); } catch(e){}
 try { const t = localStorage.getItem('csat_desafio_tema'); if (t) document.documentElement.dataset.theme = t; } catch(e){}
@@ -621,8 +625,12 @@ bind('pHub', (v) => { S.hub = v; });
 bind('pRegra', (v) => { S.regra = v; });
 bind('p21767', (v) => { S.er21767 = v; });
 bind('pBaseline', (v) => { if (v) S.baseline = v > D.corte ? D.corte : v; });
-$('bReset').onclick = () => { S = Object.assign({}, PADRAO, {praca:S.praca, heat:S.heat, view:S.view}); render(); };
+$('bReset').onclick = () => { S = Object.assign({}, PADRAO, {praca:S.praca, heat:S.heat, view:S.view, gvo:S.gvo, loja:S.loja, mes:S.mes, dia:S.dia}); render(); };
 $('fGvo').addEventListener('change', (e) => { S.gvo = e.target.value; render(); });
+$('fLoja').addEventListener('change', (e) => { S.loja = e.target.value; render(); });
+$('fMes').addEventListener('change', (e) => { S.mes = e.target.value; S.dia = ''; render(); });
+$('fDia').addEventListener('change', (e) => { S.dia = e.target.value; render(); });
+$('fLimpar').addEventListener('click', () => { S.gvo = S.loja = S.mes = S.dia = ''; render(); });
 $('bTema').onclick = () => {
   const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
   r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('csat_desafio_tema', r.dataset.theme); } catch(e){}
@@ -643,6 +651,7 @@ function render(){
   seg($('tabs'), Object.entries(CFG.pracas).map(([k,v]) => [k, v.nome]), S.praca, (v) => { S.praca = v; render(); });
   $('hData').textContent = `Base até ${fD(p.corte)} · ${p.dias} dias até ${fD(p.fim)}`;
   $('hMeta').textContent = `Meta ${fP(p.meta,0)}`;
+  _cacheDia = {}; renderFiltros();
   const pz = renderPremio(); const hz = renderHero(pz); renderVTabs(hz.fora, pz);
   renderCenarios(); renderPlano(); renderCascata(); renderHeat(); renderMult(); renderAcomp(); renderComentarios(); renderEvolucao(); renderFoot(); icons();
 }
@@ -750,7 +759,7 @@ function renderCenarios(){
     h += `<tr class="click${sel?' sel':''}" tabindex="0" data-i="${i}"><td>${esc(nome)}${sel?' <span class="chip">em uso</span>':''}</td><td class="n">${fI(r.R)}</td><td class="n">${f1(r.porDia)}</td><td class="n">${f1(r.ritmoDia)}</td><td class="n">${fX(r.multiplo)}</td><td class="n">${fI(r.e)}</td><td class="n">${fP(r.atual.total,2)}</td><td class="n">${fP(r.final.total,2)}</td><td><span class="badge ${r.viavel?'ok':'bad'}">${r.viavel?'Sim':'Não'}</span></td></tr>`;
   });
   $('tCen').innerHTML = h + '</tbody>';
-  const apply = (tr) => { const c = rows[+tr.dataset.i]; S = Object.assign({}, c.s, {praca:S.praca, heat:S.heat, view:S.view, gvo:S.gvo}); render(); };
+  const apply = (tr) => { const c = rows[+tr.dataset.i]; S = Object.assign({}, c.s, {praca:S.praca, heat:S.heat, view:S.view, gvo:S.gvo, loja:S.loja, mes:S.mes, dia:S.dia}); render(); };
   $('tCen').querySelectorAll('tr.click').forEach((tr) => { tr.onclick = () => apply(tr); tr.onkeydown = (e) => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); apply(tr); } }; });
 }
 
@@ -929,8 +938,8 @@ function insightsPDV(x){
   const rd = M.realizadoDiario(D.linhas, x.cod, ini14 < mesIni ? ini14 : mesIni, corte);
   const z = () => ({resp:0, p:{sup:0,er:0,ent:0}, n:{sup:0,er:0,ent:0}});
   const add = (acc, o) => { acc.resp += o.resp; for (const d of ['sup','er','ent']) { acc.p[d] += o[d]; acc.n[d] += o.n[d]; } };
-  const ontem = z(), nov = z();
-  if (rd[corte]) add(ontem, rd[corte]);
+  const nov = z();
+  const RP = realizadoPeriodo(x), ontem = RP.o;
   for (const [dt, o] of Object.entries(rd)) if (dt >= mesIni) add(nov, o);
   const diasNov = M.diffDays(mesIni, corte) + 1;
   const serie = [];
@@ -959,7 +968,8 @@ function insightsPDV(x){
     metaDia: x.temPlano && x.porDia>0 ? x.porDia : 0,
     metaTxt: !x.temPlano || !(x.porDia>0) ? '0' : x.porDia>=1 ? fI(metaHoje) : '1 a cada ' + fI(Math.round(1/x.porDia)) + ' dias',
     hoje: D.parcial ? D.linhas.filter((l)=>l[0]===D.parcial.dia && l[1]===Number(x.cod)).reduce((a,l)=>a+l[2].reduce((s,v)=>s+v,0),0) : null,
-    atingOntem: x.porDia>0 ? ontem.resp/x.porDia : null, atingRitmo: x.porDia>0 ? ritmoNov/x.porDia : null,
+    metaPer: RP.meta,
+    atingOntem: RP.meta>0 ? ontem.resp/RP.meta : null, atingRitmo: x.porDia>0 ? ritmoNov/x.porDia : null,
     gap: x.totalAtual!=null ? R.params.meta - x.totalAtual : null };
 }
 function statusPDV(x, I){
@@ -1015,33 +1025,37 @@ function kpi(lbl, val, icon, tone, ft, prog){
 const deltaCls = (v) => v==null ? 'flat' : v>=0.95 ? 'up' : v>=0.7 ? 'mid' : 'down';
 
 function renderHero(pz){
-  const p = R.params, us = planejadas(R).filter((x)=>x.temPlano);
+  const p = R.params, us = planejadas(R).filter((x)=>x.temPlano && fU(x.cod)), PER = periodo();
   const Is = us.map((x) => insightsPDV(x));
+  const metaPerP = Is.reduce((a,I)=>a+I.metaPer,0);
   const metaDiaP = Is.reduce((a,I)=>a+I.metaDia,0);
   const metaHoje = metaDiaP>=1 ? Is.reduce((a,I)=>a+I.metaHoje,0) : metaDiaP, metaHojeProm = Is.reduce((a,I)=>a+I.metaHojeProm,0);
   const metaHojeTxt = metaDiaP>=1 ? fI(metaHoje) : f1(metaDiaP);
   const ontem = Is.reduce((a,I)=>a+I.ontem.resp,0);
-  const gap = p.meta - R.atual.total;
-  const ating = metaDiaP>0 ? ontem/metaDiaP : null;
+  const csatF = filtrado() ? grupoCSAT(us).total : R.atual.total;
+  const gap = p.meta - csatF;
+  const ating = metaPerP>0 ? ontem/metaPerP : null;
+  const ontemProm = Is.reduce((a,I)=>a+I.ontem.p.sup,0);
+  const csatPer = (() => { const dd = R.dimsUso.map((d)=>{ const n = Is.reduce((a,I)=>a+I.ontem.n[d],0); return n>0 ? Is.reduce((a,I)=>a+I.ontem.p[d],0)/n : null; }).filter((v)=>v!=null); return dd.length ? dd.reduce((a,b)=>a+b,0)/dd.length : null; })();
   const pos = (v) => Math.max(0, Math.min(100, (v-0.75)/0.25*100));
 
   $('kpis').innerHTML =
-    kpi('CSAT TOTAL · praça', fP(R.atual.total), 'gauge', gap>0?'t-destructive':'t-primary',
-      `<span class="delta ${gap>0?'down':'up'}"><i data-lucide="${gap>0?'trending-down':'trending-up'}"></i>${gap>0?'−':'+'}${fPP(Math.abs(gap))}</span><span>meta ${fP(p.meta,0)} · teto na média ${fP(R.teto.total)}</span>`,
-      `<div class="prog" aria-hidden="true"><i class="${gap>0?'bad':''}" style="width:${pos(R.atual.total)}%"></i><b style="left:${pos(p.meta)}%"></b></div>`) +
+    kpi(`CSAT TOTAL · ${filtrado() ? esc(nomeFiltro()) : 'praça'}`, fP(csatF), 'gauge', gap>0?'t-destructive':'t-primary',
+      `<span class="delta ${gap>0?'down':'up'}"><i data-lucide="${gap>0?'trending-down':'trending-up'}"></i>${gap>0?'−':'+'}${fPP(Math.abs(gap))}</span><span>meta ${fP(p.meta,0)} · ${filtrado() ? 'praça ' + fP(R.atual.total) : 'teto na média ' + fP(R.teto.total)}</span>`,
+      `<div class="prog" aria-hidden="true"><i class="${gap>0?'bad':''}" style="width:${pos(csatF)}%"></i><b style="left:${pos(p.meta)}%"></b></div>`) +
     kpi(`Meta de hoje · ${dow(p.inicioPlano)} ${fD(p.inicioPlano)}`, `${metaHojeTxt} <small>respostas</small>`, 'target', 't-accent',
       (D.parcial && D.parcial.dia===p.inicioPlano ? (() => { const h = Is.reduce((a,I)=>a+(I.hoje||0),0); const at = metaDiaP>0 ? h/metaDiaP : null;
         return `<span class="delta ${deltaCls(at)}">hoje até ${esc(D.parcial.ate)}: ${fI(h)}</span><span>${pctAting(at)} da meta</span>`; })()
         : `<span>${metaDiaP>=1 ? plural(metaHojeProm,'nota','notas')+' 4–5' : 'média/dia'} · ${p.dias} dias até ${fD(p.fim)}</span>`)) +
-    kpi(`Realizado ontem · ${fD(p.corte)}`, `${fI(ontem)} <small>${ontem===1?'resposta':'respostas'}</small>`, 'check-check', 't-primary',
-      `<span class="delta ${deltaCls(ating)}">${pctAting(ating)} da meta</span>`) +
+    kpi(`Realizado · ${esc(PER.longo)}`, `${fI(ontem)} <small>${ontem===1?'resposta':'respostas'}</small>`, 'check-check', 't-primary',
+      `<span class="delta ${deltaCls(ating)}">${pctAting(ating)} da diarização</span><span>${plural(ontemProm,'nota','notas')} 4–5${csatPer!=null?' · CSAT '+fP(csatPer):''}</span>`) +
     kpi('Premiação', `${fR(pz.hoje)} <small>de ${fR(pz.emJogo)}</small>`, 'trophy', 't-warning',
       `<span class="delta ${pz.proj>0?'up':'down'}">projeção ${fR(pz.proj)}</span>`);
 
   // prioridades (curtas)
   const L = [];
   const todos = us.map((x,i) => ({x, I:Is[i]}));
-  if (metaHoje>=1) L.push(`<b>${fI(metaHoje)} respostas hoje</b> · ontem ${fI(ontem)} (${pctAting(ating)})`);
+  if (metaHoje>=1) L.push(`<b>${fI(metaHoje)} respostas hoje</b> · ${PER.tipo==='ontem'?'ontem':esc(PER.longo)}: ${fI(ontem)} (${pctAting(ating)} da diarização)`);
   const rank = todos.filter((o)=>o.x.R>0 && o.I.metaDia>0 && o.x.totalAtual < p.meta).sort((a,b) => b.I.metaDia - a.I.metaDia);
   if (rank[0]) { const {x,I} = rank[0]; L.push(`Foco: <b>${esc(nomeU(x.cod))}</b> · ${fP(I.metaDia/Math.max(1e-9,metaDiaP),0)} da meta do dia · a ${fPP(I.gap)} de ${fP(p.meta,0)}`); }
   const baixa = todos.filter((o)=>o.I.pctNov!=null && o.I.nov.resp>=5 && o.I.pctNov < p.meta).sort((a,b)=>a.I.pctNov-b.I.pctNov)[0];
@@ -1052,13 +1066,10 @@ function renderHero(pz){
   $('prior').innerHTML = L.slice(0,5).map((t,i)=>`<li><span class="n">${i+1}</span><span>${t}</span></li>`).join('');
 
   // filtro de gerente
-  const gvos = [...new Set(us.map((x)=>infoU(x.cod).gvo).filter(Boolean))].sort();
-  if (S.gvo && !gvos.includes(S.gvo)) S.gvo = '';
-  $('fGvo').innerHTML = '<option value="">Todos</option>' + gvos.map((g)=>`<option${g===S.gvo?' selected':''}>${esc(g)}</option>`).join('');
 
   // cartões por PDV
   const cor = corDe(R);
-  const ord = todos.filter((o)=>!S.gvo || infoU(o.x.cod).gvo===S.gvo)
+  const ord = todos
     .sort((a,b) => b.I.metaHoje - a.I.metaHoje || (a.x.totalAtual||0)-(b.x.totalAtual||0));
   $('pdvs').innerHTML = ord.map(({x,I}) => {
     const [cls,lbl] = statusPDV(x,I); const sev = SEV[cls]; const inf = infoU(x.cod);
@@ -1070,7 +1081,7 @@ function renderHero(pz){
       ${bullet(x.totalAtual, x.totalTeto, x.totalFinal, p.meta)}
       <div class="trio">
         <div class="t hi"><div class="k">Meta hoje</div><div class="v">${I.metaDia>=1||!I.metaDia ? fI(I.metaHoje) : '<small>'+I.metaTxt+'</small>'}</div><div class="d">${I.metaDia>=1 ? `${plural(I.metaHojeProm,'nota','notas')} 4–5` : I.metaDia>0 ? `~${f1(I.metaDia)}/dia` : 'na meta'}${I.hoje!=null && D.parcial.dia===p.inicioPlano ? ` · <b>${fI(I.hoje)} até ${esc(D.parcial.ate)}</b>` : ''}</div></div>
-        <div class="t"><div class="k">Ontem</div><div class="v">${fI(I.ontem.resp)}</div><div class="d">${I.metaDia>0?`<span class="badge ${atingCls(I.atingOntem)}">${pctAting(I.atingOntem)}</span>`:''}</div></div>
+        <div class="t"><div class="k">${esc(PER.label)}</div><div class="v">${fI(I.ontem.resp)}</div><div class="d">${I.metaPer>0?`<span class="badge ${atingCls(I.atingOntem)}">${pctAting(I.atingOntem)}</span>`:''}</div></div>
         <div class="t"><div class="k">Novembro</div><div class="v">${f1(I.ritmoNov)}<small>/dia</small></div><div class="d">${x.porDia>0?`<span class="badge ${atingCls(I.atingRitmo)}">${pctAting(I.atingRitmo)}</span>`:''}${I.pctNov!=null?`<span>${fP(I.pctNov,0)} 4–5</span>`:''}</div></div>
       </div>
       ${sparkline(I, I.metaDia, cor[x.cod], nomeU(x.cod))}
@@ -1088,9 +1099,9 @@ function renderHero(pz){
 
   // quadro em tabela
   const novTot = Is.reduce((a,I)=>a+I.ritmoNov,0);
-  let t = `<thead><tr><th>PDV</th><th class="n">CSAT</th><th class="n">Falta</th><th class="n">Meta hoje</th><th class="n">4–5 hoje</th><th class="n">Ontem</th><th class="n">Ating. ontem</th><th class="n">Nov./dia</th><th class="n">Diarização/dia</th><th class="n">Ating. diarização</th><th class="n">4–5 nov.</th><th>Status</th></tr></thead><tbody>`;
+  let t = `<thead><tr><th>PDV</th><th class="n">CSAT</th><th class="n">Falta</th><th class="n">Meta hoje</th><th class="n">4–5 hoje</th><th class="n">${esc(PER.label)}</th><th class="n">Ating. ${esc(PER.label.toLowerCase())}</th><th class="n">Nov./dia</th><th class="n">Diarização/dia</th><th class="n">Ating. diarização</th><th class="n">4–5 nov.</th><th>Status</th></tr></thead><tbody>`;
   ord.forEach(({x,I}) => { const [c,l] = statusPDV(x,I); t += `<tr><td><b>${esc(nomeU(x.cod))}</b></td><td class="n">${fP(x.totalAtual)}</td><td class="n">${I.gap>0?fPP(I.gap):'—'}</td><td class="n">${I.metaDia>=1||!I.metaDia?fI(I.metaHoje):f1(I.metaDia)}</td><td class="n">${fI(I.metaHojeProm)}</td><td class="n">${fI(I.ontem.resp)}</td><td class="n">${pctAting(I.atingOntem)}</td><td class="n">${f1(I.ritmoNov)}</td><td class="n">${f1(x.porDia)}</td><td class="n">${pctAting(I.atingRitmo)}</td><td class="n">${fP(I.pctNov,0)}</td><td><span class="badge ${c}">${l}</span></td></tr>`; });
-  t += `<tr class="tot"><td>Praça</td><td class="n">${fP(R.atual.total)}</td><td class="n">${gap>0?fPP(gap):'—'}</td><td class="n">${metaHojeTxt}</td><td class="n">${fI(metaHojeProm)}</td><td class="n">${fI(ontem)}</td><td class="n">${pctAting(ating)}</td><td class="n">${f1(novTot)}</td><td class="n">${f1(R.porDia)}</td><td class="n">${pctAting(R.porDia>0?novTot/R.porDia:null)}</td><td></td><td></td></tr>`;
+  t += `<tr class="tot"><td>${filtrado()?"Total":"Praça"}</td><td class="n">${fP(csatF)}</td><td class="n">${gap>0?fPP(gap):'—'}</td><td class="n">${metaHojeTxt}</td><td class="n">${fI(metaHojeProm)}</td><td class="n">${fI(ontem)}</td><td class="n">${pctAting(ating)}</td><td class="n">${f1(novTot)}</td><td class="n">${f1(R.porDia)}</td><td class="n">${pctAting(R.porDia>0?novTot/R.porDia:null)}</td><td></td><td></td></tr>`;
   $('tQuadro').innerHTML = t + '</tbody>';
   return { fora };
 }
@@ -1165,12 +1176,12 @@ function renderPremio(){
     const atual = grupoCSAT(rs).total, proj = projecao(rs, Imap).total;
     const plano = grupoCSAT(rs, (x,d) => ativa(x,d) ? [x.P[d], x.V[d]] : [0,0]).total;
     const Is = rs.map((x)=>Imap[x.cod]);
-    const metaDia = Is.reduce((a,I)=>a+I.metaDia,0), ontem = Is.reduce((a,I)=>a+I.ontem.resp,0);
+    const metaDia = Is.reduce((a,I)=>a+I.metaDia,0), metaPer = Is.reduce((a,I)=>a+I.metaPer,0), ontem = Is.reduce((a,I)=>a+I.ontem.resp,0);
     const nov = Is.reduce((a,I)=>a+I.ritmoNov,0);
     const est = estadoPremio(atual, proj);
     return { nome, rs, atual, proj, plano, est, valor: INC.valor_gerente,
       R: rs.reduce((a,x)=>a+x.R,0), porDia: rs.reduce((a,x)=>a+(x.porDia||0),0), metaDia, ontem, nov,
-      atOntem: metaDia>0 ? ontem/metaDia : null, atNov: metaDia>0 ? nov/metaDia : null,
+      metaPer, atOntem: metaPer>0 ? ontem/metaPer : null, atNov: metaDia>0 ? nov/metaDia : null,
       seg45: atual < meta ? seguidas(rs, true) : null, folga: atual >= meta ? seguidas(rs, false) : null };
   }).sort((a,b) => ORD_EST[a.est.k]-ORD_EST[b.est.k] || b.atual-a.atual);
 
@@ -1211,7 +1222,7 @@ function renderPremio(){
         <div class="val"><span class="coin sm ${g.est.k}" aria-hidden="true">R$</span>${fR(g.valor)}</div>
         <div class="csat"><div class="row"><b>${fP(g.atual)}</b><span class="muted">proj. ${fP(g.proj)}</span></div>${barra(g)}</div>
         <div class="ating">
-          <div><span class="k">Ontem x diarização</span><span class="badge ${atingCls(g.atOntem)}">${pctAting(g.atOntem)}</span><span class="muted">${fI(g.ontem)} de ${g.metaDia>=1?fI(g.metaDia):f1(g.metaDia)}</span></div>
+          <div><span class="k">${esc(periodo().label)} x diarização</span><span class="badge ${atingCls(g.atOntem)}">${pctAting(g.atOntem)}</span><span class="muted">${fI(g.ontem)} de ${g.metaPer>=1?fI(g.metaPer):f1(g.metaPer)}</span></div>
           <div><span class="k">Nov. x diarização</span><span class="badge ${atingCls(g.atNov)}">${pctAting(g.atNov)}</span><span class="muted">${f1(g.nov)} de ${f1(g.metaDia)}/dia</span></div>
         </div>
         <div class="st">${chip(g)}<div class="falta">${falta(g)}</div></div>
@@ -1230,10 +1241,10 @@ const TEMA_IC = { sem_contato:'user-x', demora_resposta:'message-circle-off', in
 function renderComentarios(){
   const el = $('vComent'); if (!el) return;
   const p = R.params;
-  const ini = S.cPer==='mes' ? p.corte.slice(0,7)+'-01' : S.cPer==='30' ? M.addDays(p.corte,-29) : p.inicioBase;
-  const cods = new Set(R.unidades.map((x)=>Number(x.cod)).filter((c)=>!S.gvo || infoU(String(c)).gvo===S.gvo));
+  const IV = intervalo(), ini = IV.ini, fimC = IV.fim;
+  const cods = new Set(R.unidades.map((x)=>Number(x.cod)).filter((c)=>fU(c)));
   const dimF = S.cDim==='todas' ? null : DIMK.indexOf(S.cDim);
-  const lst = (D.comentarios||[]).filter((c)=>cods.has(c[1]) && c[0]>=ini && c[0]<=p.corte && (dimF==null || c[2]===dimF));
+  const lst = (D.comentarios||[]).filter((c)=>cods.has(c[1]) && c[0]>=ini && c[0]<=fimC && (dimF==null || c[2]===dimF));
   const crit = lst.filter((c)=>c[3]<=3);
   const elog = lst.filter((c)=>c[3]>=4).length;
   const iEl = TEMAS.findIndex((t)=>t.id==='elogio'), iOut = TEMAS.findIndex((t)=>t.id==='outros');
@@ -1266,8 +1277,8 @@ function renderComentarios(){
 
   el.innerHTML = `
   <section class="card">
-    <div class="card-hd"><div class="hl"><span class="icchip t-destructive"><i data-lucide="message-square-warning"></i></span><div><h2>Focos para ação</h2><p>O que mais aparece nos comentários com nota 1–3</p></div></div>
-      <div class="ctrl">${segH('cPer', [['ano','Ano'],['mes','Novembro'],['30','30 dias']], S.cPer)}${segH('cDim', [['todas','Todas'],['sup','Sup'],['er','ER'],['ent','Entrega']], S.cDim)}</div></div>
+    <div class="card-hd"><div class="hl"><span class="icchip t-destructive"><i data-lucide="message-square-warning"></i></span><div><h2>Focos para ação</h2><p>Notas 1–3 · ${fD(ini)}${fimC!==ini?' a '+fD(fimC):''}</p></div></div>
+      <div class="ctrl">${segH('cDim', [['todas','Todas'],['sup','Sup'],['er','ER'],['ent','Entrega']], S.cDim)}</div></div>
     <div class="cmini">
       <div><span class="l">Comentários</span><b>${fI(lst.length)}</b></div>
       <div><span class="l">Notas 1–3</span><b class="c-bad">${fI(crit.length)}</b><span class="l">${lst.length?fP(crit.length/lst.length,0):'—'}</span></div>
@@ -1362,6 +1373,7 @@ function lineChart(el, cfg){
   fim.sort((a,b)=>a.y-b.y);
   for (let i = 1; i < fim.length; i++) if (fim[i].y - fim[i-1].y < 14) fim[i].y = fim[i-1].y + 14;
   for (const f of fim) g += `<text x="${m.l+iw+10}" y="${(f.y+4).toFixed(1)}" font-size="11.5" fill="var(--ink)"><tspan font-weight="700">${cfg.endFmt(f.v)}</tspan><tspan fill="var(--ink-2)"> ${esc(f.s.short||f.s.label)}</tspan></text>`;
+  if (cfg.marca >= 0) g += `<line x1="${X(cfg.marca).toFixed(1)}" x2="${X(cfg.marca).toFixed(1)}" y1="${m.t}" y2="${m.t+ih}" stroke="var(--accent)" stroke-width="2" opacity=".6"/><text x="${X(cfg.marca).toFixed(1)}" y="${m.t+10}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" paint-order="stroke" stroke="var(--surface)" stroke-width="3">${fD(datas[cfg.marca])}</text>`;
   g += `<line class="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t+ih}" stroke="var(--axis)" visibility="hidden"/><g class="dots"></g>`;
   g += `<rect class="hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(cfg.aria)}">${g}</svg>`;
@@ -1380,11 +1392,13 @@ function lineChart(el, cfg){
 function renderEvolucao(){
   const el = $('vEvol'); if (!el) return;
   const p = R.params;
-  const ini = S.ePer === 'mes' ? D.corte.slice(0,7) + '-01' : p.inicioBase;
-  const fim = D.corte;
+  const IV = intervalo();
+  const ini = IV.tipo==='ano' ? IV.ini : (S.mes || S.dia.slice(0,7)) + '-01';
+  const fim = IV.tipo==='ano' ? IV.fim : (() => { const f = fimMes(ini.slice(0,7)); return f < diaMax() ? f : diaMax(); })();
+  S.ePer = IV.tipo==='ano' ? 'ano' : 'mes';
   const dims = R.dimsUso;
   const cor = corDe(R);
-  const us = planejadas(R).filter((x)=>x.temPlano && (!S.gvo || infoU(x.cod).gvo === S.gvo));
+  const us = planejadas(R).filter((x)=>x.temPlano && fU(x.cod));
   const minN = S.ePer === 'mes' ? 3 : 20;
   const curto = (t) => t.length > 15 ? t.slice(0, 14).trimEnd() + '…' : t;
   const praca = serieAcum(R.unidades.map((x)=>x.cod), ini, fim, dims, minN);
@@ -1397,7 +1411,7 @@ function renderEvolucao(){
   const ult = (a) => { for (let i = a.length-1; i>=0; i--) if (a[i]!=null) return a[i]; return null; };
   el.innerHTML = `
   <section class="card">
-    <div class="card-hd"><div class="hl"><span class="icchip t-primary"><i data-lucide="chart-line"></i></span><div><h2>CSAT TOTAL acumulado</h2><p>${fD(ini)} a ${fD(fim)} · linha tracejada = meta ${fP(p.meta,0)}</p></div></div>${seg}</div>
+    <div class="card-hd"><div class="hl"><span class="icchip t-primary"><i data-lucide="chart-line"></i></span><div><h2>CSAT TOTAL acumulado</h2><p>${S.ePer==='ano'?'Ano':MESES_L[+ini.slice(5,7)-1]} · ${fD(ini)} a ${fD(fim)}${S.dia?' · dia '+fD(S.dia)+' marcado':''}</p></div></div></div>
     ${leg}
     <div class="ech" id="eCsat"></div>
   </section>
@@ -1407,9 +1421,10 @@ function renderEvolucao(){
     <details><summary>Ver como tabela</summary><div class="tw" style="margin-top:10px"><table id="eTab"></table></div></details>
   </section>`;
   const datas = praca.datas;
-  lineChart($('eCsat'), { datas, series: ser.map((s)=>({...s, vals:s.csat})), ref:{ v:p.meta, label:'Meta ' + fP(p.meta,0) },
+  const marca = S.dia ? datas.indexOf(S.dia) : -1;
+  lineChart($('eCsat'), { marca, datas, series: ser.map((s)=>({...s, vals:s.csat})), ref:{ v:p.meta, label:'Meta ' + fP(p.meta,0) },
     yFmt:(v,st)=> (v*100).toLocaleString('pt-BR',{maximumFractionDigits: st<0.01?1:0}) + '%', endFmt:(v)=>fP(v), aria:'CSAT TOTAL acumulado por praça e PDV' });
-  lineChart($('eResp'), { datas, series: ser.map((s)=>({...s, vals:s.resp})), zero:true, yPad:0.04,
+  lineChart($('eResp'), { marca, datas, series: ser.map((s)=>({...s, vals:s.resp})), zero:true, yPad:0.04,
     yFmt:(v)=>fI(v), endFmt:(v)=>fI(v), aria:'Respostas acumuladas por praça e PDV' });
   // tabela: fim de cada mês (ou de cada semana no mês) + último dia
   const idx = datas.map((d,i)=>i).filter((i)=> i===datas.length-1 || (S.ePer==='mes' ? new Date(datas[i]+'T12:00:00Z').getUTCDay()===0 : datas[i+1].slice(8)==='01'));
@@ -1417,6 +1432,62 @@ function renderEvolucao(){
     idx.map((i)=>`<tr><td>${fD(datas[i])}</td>${ser.map((s)=>`<td class="n">${fP(s.csat[i])}</td><td class="n">${fI(s.resp[i])}</td>`).join('')}</tr>`).join('')}</tbody>`;
   el.querySelectorAll('.ei').forEach((b) => b.onclick = () => { S.eOff[b.dataset.k] = !S.eOff[b.dataset.k]; renderEvolucao(); icons(); });
   el.querySelectorAll('.ptabs[data-k="ePer"] button').forEach((b) => b.onclick = () => { S.ePer = b.dataset.v; renderEvolucao(); icons(); });
+}
+
+// ================= filtros globais: loja, mês e dia
+const MESES_L = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const fimMes = (ym) => { const [y,m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0,10); };
+const diaMax = () => D.parcial ? D.parcial.dia : D.corte;
+const fU = (cod) => (!S.gvo || infoU(String(cod)).gvo === S.gvo) && (!S.loja || String(cod) === S.loja);
+const filtrado = () => !!(S.gvo || S.loja);
+const nomeFiltro = () => S.loja ? nomeU(S.loja) : S.gvo;
+/** Período do "realizado": dia escolhido, mês escolhido ou ontem (padrão). */
+function periodo(){
+  if (S.dia) return { ini:S.dia, fim:S.dia, tipo:'dia', label:fD(S.dia), longo:`${dow(S.dia)} ${fD(S.dia)}` };
+  if (S.mes) { const f = fimMes(S.mes); const fim = f < D.corte ? f : D.corte; return { ini:S.mes+'-01', fim, tipo:'mes', label:MESES_L[+S.mes.slice(5)-1], longo:`${MESES_L[+S.mes.slice(5)-1]} (até ${fD(fim)})` }; }
+  return { ini:D.corte, fim:D.corte, tipo:'ontem', label:'Ontem', longo:`ontem · ${fD(D.corte)}` };
+}
+/** Intervalo das análises (comentários e evolução): dia, mês ou ano. */
+function intervalo(){
+  if (S.dia) return { ini:S.dia, fim:S.dia, tipo:'dia' };
+  if (S.mes) { const f = fimMes(S.mes); return { ini:S.mes+'-01', fim: f < diaMax() ? f : diaMax(), tipo:'mes' }; }
+  return { ini:R.params.inicioBase, fim:D.corte, tipo:'ano' };
+}
+let _cacheDia = {};
+/** Diarização (respostas/dia) que a unidade precisava no dia d, com o plano calculado na véspera. */
+function diarizacao(cod, d){
+  if (d > R.params.fim) return 0;
+  let Rd = _cacheDia[d];
+  if (!Rd) Rd = _cacheDia[d] = (d === R.params.inicioPlano ? R : M.calcular(D, Object.assign(opts(S), { corte: M.addDays(d, -1) })));
+  const u = Rd.unidades.find((x) => x.cod === String(cod));
+  return u && u.temPlano && u.porDia > 0 ? u.porDia : 0;
+}
+function realizadoPeriodo(x){
+  const P = periodo();
+  const rd = M.realizadoDiario(D.linhas, x.cod, P.ini, P.fim);
+  const o = { resp:0, p:{sup:0,er:0,ent:0}, n:{sup:0,er:0,ent:0} };
+  for (const v of Object.values(rd)) { o.resp += v.resp; for (const d of ['sup','er','ent']) { o.p[d] += v[d]; o.n[d] += v.n[d]; } }
+  let meta = 0;
+  for (let d = P.ini; d <= P.fim; d = M.addDays(d, 1)) meta += diarizacao(x.cod, d);
+  return { o, meta };
+}
+function renderFiltros(){
+  const usAll = planejadas(R).filter((x)=>x.temPlano);
+  const gvos = [...new Set(usAll.map((x)=>infoU(x.cod).gvo).filter(Boolean))].sort();
+  if (S.gvo && !gvos.includes(S.gvo)) S.gvo = '';
+  const lojas = usAll.filter((x)=>!S.gvo || infoU(x.cod).gvo === S.gvo);
+  if (S.loja && !lojas.some((x)=>x.cod === S.loja)) S.loja = '';
+  $('fGvo').innerHTML = '<option value="">Todos</option>' + gvos.map((g)=>`<option${g===S.gvo?' selected':''}>${esc(g)}</option>`).join('');
+  $('fLoja').innerHTML = '<option value="">Todas</option>' + lojas.map((x)=>`<option value="${x.cod}"${x.cod===S.loja?' selected':''}>${esc(nomeU(x.cod))}</option>`).join('');
+  const meses = []; for (let m = R.params.inicioBase.slice(0,7); m <= diaMax().slice(0,7); m = M.addDays(fimMes(m), 1).slice(0,7)) meses.push(m);
+  if (S.mes && !meses.includes(S.mes)) S.mes = '';
+  $('fMes').innerHTML = '<option value="">Ano todo</option>' + meses.slice().reverse().map((m)=>`<option value="${m}"${m===S.mes?' selected':''}>${MESES_L[+m.slice(5)-1]}</option>`).join('');
+  const mDia = S.mes || diaMax().slice(0,7);
+  const dias = []; for (let d = diaMax(); d >= mDia+'-01' && d.slice(0,7) === mDia; d = M.addDays(d, -1)) dias.push(d);
+  if (S.dia && !dias.includes(S.dia)) S.dia = '';
+  $('fDia').innerHTML = `<option value="">${S.mes ? 'Mês inteiro' : 'Ontem (' + fD(D.corte) + ')'}</option>` +
+    dias.map((d)=>`<option value="${d}"${d===S.dia?' selected':''}>${dow(d)} ${fD(d)}${D.parcial && d===D.parcial.dia ? ' (parcial)' : ''}</option>`).join('');
+  $('fLimpar').hidden = !(S.gvo || S.loja || S.mes || S.dia);
 }
 
 function resumoZap(){
@@ -1431,7 +1502,7 @@ function resumoZap(){
   try { const pz = renderPremio(); L.push(`Premiação: ${fR(pz.hoje)} de ${fR(pz.emJogo)} garantidos se fechasse hoje · projeção ${fR(pz.proj)}`);
     L.push(pz.linhas.map((g,i) => `${i+1}º ${g.nome} ${fP(g.atual)} (${g.est.lbl})`).join(' · ')); } catch(e){}
   L.push('');
-  us.forEach((x,i) => { const I = Is[i]; L.push(`• *${nomeU(x.cod)}* ${fP(x.totalAtual)} · hoje ${I.metaDia>=1?fI(I.metaHoje)+' resp. ('+fI(I.metaHojeProm)+' notas 4–5)':I.metaTxt} · ontem ${fI(I.ontem.resp)}${I.metaDia>0?' ('+pctAting(I.atingOntem)+')':''}`); });
+  us.forEach((x,i) => { const I = Is[i]; L.push(`• *${nomeU(x.cod)}* ${fP(x.totalAtual)} · hoje ${I.metaDia>=1?fI(I.metaHoje)+' resp. ('+fI(I.metaHojeProm)+' notas 4–5)':I.metaTxt} · ${periodo().label.toLowerCase()} ${fI(I.ontem.resp)}${I.metaPer>0?' ('+pctAting(I.atingOntem)+')':''}`); });
   return L.join('\n');
 }
 $('bZap').onclick = async () => {
