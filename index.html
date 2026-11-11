@@ -259,6 +259,23 @@ h3.rk{font-size:14px;margin:14px 0 8px;color:var(--ink-2);font-weight:600}
 .minib{display:flex;align-items:center;gap:8px;min-width:150px}
 .minib .badge{font-size:11px;padding:1px 7px}
 .thoje td{vertical-align:middle}
+.fld input[type=date]{height:38px;border:1px solid var(--border);border-radius:10px;background:var(--page);padding:0 10px;min-width:150px}
+#fPre button small{font-weight:600;opacity:.75;font-size:11px}
+#fPre button:disabled{opacity:.4;cursor:not-allowed}
+#fPre{flex-wrap:wrap;max-width:100%}
+.filter .fld{max-width:100%}
+.pdd{display:flex;align-items:flex-end;gap:3px;height:150px;padding:6px 2px 0;margin-bottom:4px;overflow-x:auto}
+.pdd-i{flex:1 0 14px;max-width:46px;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;cursor:default}
+.pdd-c{position:relative;flex:1;width:100%;}
+.pdd-b{position:absolute;left:12%;right:12%;bottom:0;border-radius:4px 4px 0 0;background:var(--crit);min-height:2px}
+.pdd-b.ok{background:var(--primary)} .pdd-b.warn{background:var(--warn)} .pdd-b.na{background:var(--axis)}
+.pdd-m{position:absolute;left:0;right:0;height:3px;margin-bottom:-1.5px;background:var(--ink);border-radius:2px}
+.pdd-i span{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.evres{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.evres>div{background:var(--surface-2);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column}
+.evres .l{font-size:12px;color:var(--ink-2);font-weight:600}
+.evres b{font-family:var(--font-display);font-size:22px;font-weight:700}
+@media (max-width:640px){.hstrip{grid-template-columns:1fr 1fr}.hstrip b{font-size:19px}.fld input[type=date]{min-width:0;width:100%}}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:9px;font-size:14px;display:none;z-index:60}
 .chip{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 5px;margin-left:4px;font-weight:500}
 @media (max-width:640px){
@@ -464,8 +481,9 @@ details.card>summary{margin:0}
     <div class="fld"><label>Praça</label><div class="ptabs" id="tabs"></div></div>
     <div class="fld"><label for="fGvo">Gerente</label><select id="fGvo"></select></div>
     <div class="fld"><label for="fLoja">Loja</label><select id="fLoja"></select></div>
-    <div class="fld"><label for="fMes">Mês</label><select id="fMes"></select></div>
-    <div class="fld"><label for="fDia">Dia</label><select id="fDia"></select></div>
+    <div class="fld"><label>Período</label><div class="ptabs" id="fPre"></div></div>
+    <div class="fld"><label for="fIni">De</label><input type="date" id="fIni"></div>
+    <div class="fld"><label for="fFim">Até</label><input type="date" id="fFim"></div>
     <button class="btn ghost sm" type="button" id="fLimpar" hidden style="align-self:flex-end"><i data-lucide="rotate-ccw"></i>Limpar</button>
   </div></section>
 
@@ -592,7 +610,7 @@ const dow = (iso) => DOWL[new Date(iso+'T12:00:00Z').getUTCDay()];
 const esc = (s) => String(s).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ---------- estado
-const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', mes:'', dia:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
+const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', pPre:'', pIni:'', pFim:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
 let S = Object.assign({}, PADRAO);
 try { const s = JSON.parse(localStorage.getItem('csat_desafio_estado')||'null'); if (s) S = Object.assign(S, {praca:s.praca||S.praca, heat:s.heat||S.heat, view:s.view||S.view}); } catch(e){}
 try { const t = localStorage.getItem('csat_desafio_tema'); if (t) document.documentElement.dataset.theme = t; } catch(e){}
@@ -637,12 +655,13 @@ bind('pHub', (v) => { S.hub = v; });
 bind('pRegra', (v) => { S.regra = v; });
 bind('p21767', (v) => { S.er21767 = v; });
 bind('pBaseline', (v) => { if (v) S.baseline = v > D.corte ? D.corte : v; });
-$('bReset').onclick = () => { S = Object.assign({}, PADRAO, {praca:S.praca, heat:S.heat, view:S.view, gvo:S.gvo, loja:S.loja, mes:S.mes, dia:S.dia}); render(); };
+$('bReset').onclick = () => { S = Object.assign({}, PADRAO, {praca:S.praca, heat:S.heat, view:S.view, gvo:S.gvo, loja:S.loja, pPre:S.pPre, pIni:S.pIni, pFim:S.pFim}); render(); };
 $('fGvo').addEventListener('change', (e) => { S.gvo = e.target.value; render(); });
 $('fLoja').addEventListener('change', (e) => { S.loja = e.target.value; render(); });
-$('fMes').addEventListener('change', (e) => { S.mes = e.target.value; S.dia = ''; render(); });
-$('fDia').addEventListener('change', (e) => { S.dia = e.target.value; render(); });
-$('fLimpar').addEventListener('click', () => { S.gvo = S.loja = S.mes = S.dia = ''; render(); });
+$('fPre').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; S.pPre = b.dataset.v; render(); });
+$('fIni').addEventListener('change', (e) => { if (!e.target.value) return; const P = periodo(); S.pPre = 'custom'; S.pIni = e.target.value; S.pFim = e.target.value > P.fim ? e.target.value : P.fim; render(); });
+$('fFim').addEventListener('change', (e) => { if (!e.target.value) return; const P = periodo(); S.pPre = 'custom'; S.pFim = e.target.value; S.pIni = e.target.value < P.ini ? e.target.value : P.ini; render(); });
+$('fLimpar').addEventListener('click', () => { S.gvo = S.loja = ''; S.pPre = ''; S.pIni = S.pFim = ''; render(); });
 $('bTema').onclick = () => {
   const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
   r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('csat_desafio_tema', r.dataset.theme); } catch(e){}
@@ -771,7 +790,7 @@ function renderCenarios(){
     h += `<tr class="click${sel?' sel':''}" tabindex="0" data-i="${i}"><td>${esc(nome)}${sel?' <span class="chip">em uso</span>':''}</td><td class="n">${fI(r.R)}</td><td class="n">${f1(r.porDia)}</td><td class="n">${f1(r.ritmoDia)}</td><td class="n">${fX(r.multiplo)}</td><td class="n">${fI(r.e)}</td><td class="n">${fP(r.atual.total,2)}</td><td class="n">${fP(r.final.total,2)}</td><td><span class="badge ${r.viavel?'ok':'bad'}">${r.viavel?'Sim':'Não'}</span></td></tr>`;
   });
   $('tCen').innerHTML = h + '</tbody>';
-  const apply = (tr) => { const c = rows[+tr.dataset.i]; S = Object.assign({}, c.s, {praca:S.praca, heat:S.heat, view:S.view, gvo:S.gvo, loja:S.loja, mes:S.mes, dia:S.dia}); render(); };
+  const apply = (tr) => { const c = rows[+tr.dataset.i]; S = Object.assign({}, c.s, {praca:S.praca, heat:S.heat, view:S.view, gvo:S.gvo, loja:S.loja, pPre:S.pPre, pIni:S.pIni, pFim:S.pFim}); render(); };
   $('tCen').querySelectorAll('tr.click').forEach((tr) => { tr.onclick = () => apply(tr); tr.onkeydown = (e) => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); apply(tr); } }; });
 }
 
@@ -980,8 +999,8 @@ function insightsPDV(x){
     metaDia: x.temPlano && x.porDia>0 ? x.porDia : 0,
     metaTxt: !x.temPlano || !(x.porDia>0) ? '0' : x.porDia>=1 ? fI(metaHoje) : '1 a cada ' + fI(Math.round(1/x.porDia)) + ' dias',
     hoje: D.parcial ? D.linhas.filter((l)=>l[0]===D.parcial.dia && l[1]===Number(x.cod)).reduce((a,l)=>a+l[2].reduce((s,v)=>s+v,0),0) : null,
-    metaPer: RP.meta,
-    atingOntem: RP.meta>0 ? ontem.resp/RP.meta : null, atingRitmo: x.porDia>0 ? ritmoNov/x.porDia : null,
+    metaPer: RP.meta, respMeta: RP.respMeta,
+    atingOntem: RP.meta>0 ? RP.respMeta/RP.meta : null, atingRitmo: x.porDia>0 ? ritmoNov/x.porDia : null,
     gap: x.totalAtual!=null ? R.params.meta - x.totalAtual : null };
 }
 function statusPDV(x, I){
@@ -1046,7 +1065,7 @@ function renderHero(pz){
   const ontem = Is.reduce((a,I)=>a+I.ontem.resp,0);
   const csatF = filtrado() ? grupoCSAT(us).total : R.atual.total;
   const gap = p.meta - csatF;
-  const ating = metaPerP>0 ? ontem/metaPerP : null;
+  const ating = metaPerP>0 ? Is.reduce((a,I)=>a+I.respMeta,0)/metaPerP : null;
   const ontemProm = Is.reduce((a,I)=>a+I.ontem.p.sup,0);
   const csatPer = (() => { const dd = R.dimsUso.map((d)=>{ const n = Is.reduce((a,I)=>a+I.ontem.n[d],0); return n>0 ? Is.reduce((a,I)=>a+I.ontem.p[d],0)/n : null; }).filter((v)=>v!=null); return dd.length ? dd.reduce((a,b)=>a+b,0)/dd.length : null; })();
   const pos = (v) => Math.max(0, Math.min(100, (v-0.75)/0.25*100));
@@ -1060,7 +1079,7 @@ function renderHero(pz){
         return `<span class="delta ${deltaCls(at)}">hoje até ${esc(D.parcial.ate)}: ${fI(h)}</span><span>${pctAting(at)} da meta</span>`; })()
         : `<span>${metaDiaP>=1 ? plural(metaHojeProm,'nota','notas')+' 4–5' : 'média/dia'} · ${p.dias} dias até ${fD(p.fim)}</span>`)) +
     kpi(`Realizado · ${esc(PER.longo)}`, `${fI(ontem)} <small>${ontem===1?'resposta':'respostas'}</small>`, 'check-check', 't-primary',
-      `<span class="delta ${deltaCls(ating)}">${pctAting(ating)} da diarização</span><span>${plural(ontemProm,'nota','notas')} 4–5${csatPer!=null?' · CSAT '+fP(csatPer):''}</span>`) +
+      `<span class="delta ${deltaCls(ating)}">${ating==null?'sem diarização':pctAting(ating)+' da diarização'}</span><span>${plural(ontemProm,'nota','notas')} 4–5${csatPer!=null?' · CSAT '+fP(csatPer):''}</span>`) +
     kpi('Premiação', `${fR(pz.hoje)} <small>de ${fR(pz.emJogo)}</small>`, 'trophy', 't-warning',
       `<span class="delta ${pz.proj>0?'up':'down'}">projeção ${fR(pz.proj)}</span>`);
 
@@ -1193,7 +1212,7 @@ function renderPremio(){
     const est = estadoPremio(atual, proj);
     return { nome, rs, atual, proj, plano, est, valor: INC.valor_gerente,
       R: rs.reduce((a,x)=>a+x.R,0), porDia: rs.reduce((a,x)=>a+(x.porDia||0),0), metaDia, ontem, nov,
-      metaPer, atOntem: metaPer>0 ? ontem/metaPer : null, atNov: metaDia>0 ? nov/metaDia : null,
+      metaPer, atOntem: metaPer>0 ? Is.reduce((a,I)=>a+I.respMeta,0)/metaPer : null, atNov: metaDia>0 ? nov/metaDia : null,
       seg45: atual < meta ? seguidas(rs, true) : null, folga: atual >= meta ? seguidas(rs, false) : null };
   }).sort((a,b) => ORD_EST[a.est.k]-ORD_EST[b.est.k] || b.atual-a.atual);
 
@@ -1355,16 +1374,19 @@ function lineChart(el, cfg){
   const vis = series.filter((s)=>!s.off);
   const vals = vis.flatMap((s)=>s.vals.filter((v)=>v!=null));
   if (ref) vals.push(ref.v);
-  let lo = Math.min(...vals), hi = Math.max(...vals);
   if (!vals.length){ el.innerHTML = '<p class="sub">Sem dados.</p>'; return; }
+  let lo = Math.min(...vals), hi = Math.max(...vals);
   if (cfg.zero) lo = 0;
   const pad = (hi-lo)*(yPad||0.08) || 0.01; if (!cfg.zero) lo -= pad; hi += pad;
   const tk = ticksNice(lo, hi, 5);
   lo = Math.min(lo, tk.out[0] ?? lo); hi = Math.max(hi, tk.out[tk.out.length-1] ?? hi);
   const X = (i) => m.l + (n<=1 ? 0 : i/(n-1)*iw), Y = (v) => m.t + ih - (v-lo)/(hi-lo)*ih;
   let g = '';
+  // faixa do período escolhido e área de projeção
+  if (cfg.proj >= 0 && cfg.proj < n-1) g += `<rect x="${X(cfg.proj).toFixed(1)}" y="${m.t}" width="${(X(n-1)-X(cfg.proj)).toFixed(1)}" height="${ih}" fill="var(--surface-2)" opacity=".55"/><text x="${(X(cfg.proj)+6).toFixed(1)}" y="${m.t+12}" font-size="10.5" fill="var(--muted)">projeção</text>`;
+  if (cfg.band && cfg.band[0] >= 0) { const a = X(cfg.band[0]) - (cfg.band[0]===cfg.band[1]?3:0), b = X(cfg.band[1]) + (cfg.band[0]===cfg.band[1]?3:0);
+    g += `<rect x="${a.toFixed(1)}" y="${m.t}" width="${Math.max(2,b-a).toFixed(1)}" height="${ih}" fill="var(--accent)" opacity=".12"/>`; }
   for (const v of tk.out) g += `<line x1="${m.l}" x2="${m.l+iw}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--grid)"/><text x="${m.l-8}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${yFmt(v, tk.st)}</text>`;
-  // eixo x: início de cada mês (ou a cada ~5 dias num mês só)
   const um = datas[0].slice(0,7) === datas[n-1].slice(0,7);
   datas.forEach((d,i) => {
     const mostra = um ? (i % 5 === 0 || i === n-1) : d.slice(8) === '01';
@@ -1372,20 +1394,17 @@ function lineChart(el, cfg){
   });
   g += `<line x1="${m.l}" x2="${m.l+iw}" y1="${m.t+ih}" y2="${m.t+ih}" stroke="var(--axis)"/>`;
   if (ref) g += `<line x1="${m.l}" x2="${m.l+iw}" y1="${Y(ref.v).toFixed(1)}" y2="${Y(ref.v).toFixed(1)}" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/><text x="${m.l+iw-4}" y="${(Y(ref.v)-6).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="var(--ink)" paint-order="stroke" stroke="var(--surface)" stroke-width="4">${ref.label}</text>`;
-  // linhas
   const fim = [];
   for (const s of vis){
     let dpath = '', on = false;
     s.vals.forEach((v,i) => { if (v==null){ on = false; return; } dpath += (on?'L':'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); on = true; });
-    g += `<path d="${dpath}" fill="none" stroke="${s.color}" stroke-width="${s.width||2}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    g += `<path d="${dpath}" fill="none" stroke="${s.color}" stroke-width="${s.width||2}"${s.dash?' stroke-dasharray="6 4"':''} stroke-linejoin="round" stroke-linecap="round"/>`;
     let li = s.vals.length-1; while (li>=0 && s.vals[li]==null) li--;
-    if (li>=0){ g += `<circle cx="${X(li).toFixed(1)}" cy="${Y(s.vals[li]).toFixed(1)}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`; fim.push({ s, y: Y(s.vals[li]), v: s.vals[li] }); }
+    if (li>=0){ g += `<circle cx="${X(li).toFixed(1)}" cy="${Y(s.vals[li]).toFixed(1)}" r="${s.dash?3:4}" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`; fim.push({ s, y: Y(s.vals[li]), v: s.vals[li] }); }
   }
-  // rótulos diretos no fim das linhas, sem sobreposição
   fim.sort((a,b)=>a.y-b.y);
   for (let i = 1; i < fim.length; i++) if (fim[i].y - fim[i-1].y < 14) fim[i].y = fim[i-1].y + 14;
   for (const f of fim) g += `<text x="${m.l+iw+10}" y="${(f.y+4).toFixed(1)}" font-size="11.5" fill="var(--ink)"><tspan font-weight="700">${cfg.endFmt(f.v)}</tspan><tspan fill="var(--ink-2)"> ${esc(f.s.short||f.s.label)}</tspan></text>`;
-  if (cfg.marca >= 0) g += `<line x1="${X(cfg.marca).toFixed(1)}" x2="${X(cfg.marca).toFixed(1)}" y1="${m.t}" y2="${m.t+ih}" stroke="var(--accent)" stroke-width="2" opacity=".6"/><text x="${X(cfg.marca).toFixed(1)}" y="${m.t+10}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" paint-order="stroke" stroke="var(--surface)" stroke-width="3">${fD(datas[cfg.marca])}</text>`;
   g += `<line class="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t+ih}" stroke="var(--axis)" visibility="hidden"/><g class="dots"></g>`;
   g += `<rect class="hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(cfg.aria)}">${g}</svg>`;
@@ -1396,92 +1415,158 @@ function lineChart(el, cfg){
     xh.setAttribute('x1', X(i)); xh.setAttribute('x2', X(i)); xh.setAttribute('visibility', 'visible');
     dots.innerHTML = vis.filter((s)=>s.vals[i]!=null).map((s)=>`<circle cx="${X(i)}" cy="${Y(s.vals[i])}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`).join('');
     const linhas = vis.map((s)=>({s, v:s.vals[i]})).filter((o)=>o.v!=null).sort((a,b)=>b.v-a.v);
-    showTip(e, `<b>${dow(datas[i])} ${fD(datas[i])}</b><br>` + linhas.map((o)=>`<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${o.s.color};margin-right:5px"></span>${esc(o.s.label)}: <b>${cfg.endFmt(o.v)}</b>`).join('<br>'));
+    showTip(e, `<b>${dow(datas[i])} ${fD(datas[i])}</b>${cfg.proj>=0 && i>cfg.proj?' <i>(projeção)</i>':''}<br>` + linhas.map((o)=>`<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${o.s.color};margin-right:5px"></span>${esc(o.s.label)}: <b>${cfg.endFmt(o.v)}</b>`).join('<br>'));
   };
   svg.querySelector('.hit').onmouseleave = () => { xh.setAttribute('visibility','hidden'); dots.innerHTML = ''; hideTip(); };
 }
 
+/** Trajetória de um grupo de unidades do corte até o fim do plano: plano (diarização cumprida) e tendência (média atual). */
+function trajetorias(us, codsBase){
+  const p = R.params, dims = R.dimsUso, nd = p.dias;
+  if (!nd) return null;
+  const base = {}; for (const d of ['sup','er','ent']) base[d] = { p:0, n:0 };
+  for (const c of codsBase){ const a = M.agregar(D.linhas, c, p.inicioBase, p.corte); for (const d of ['sup','er','ent']){ base[d].p += a[d].p; base[d].n += a[d].n; } }
+  const plano = [], tend = [], respP = [], respT = [];
+  const acc = { pl:{}, tn:{} }; for (const d of ['sup','er','ent']){ acc.pl[d] = [0,0]; acc.tn[d] = [0,0]; }
+  const diarios = us.map((x) => {
+    const I = insightsPDV(x), o = { x, prom:{}, vol:{}, taxa:{} };
+    for (const d of x.ativas){ o.prom[d] = M.diario(x.P[d]||0, nd); o.vol[d] = M.diario(x.V[d]||0, nd);
+      o.taxa[d] = I.nov.n[d] >= 5 ? I.nov.p[d]/I.nov.n[d] : (x.csatBase[d] ?? 0); }
+    return o;
+  });
+  let rP = 0, rT = 0;
+  const csat = (a) => { const v = dims.map((d)=> (base[d].n + a[d][1])>0 ? (base[d].p + a[d][0])/(base[d].n + a[d][1]) : null).filter((t)=>t!=null); return v.length ? v.reduce((s,t)=>s+t,0)/v.length : null; };
+  for (let k = 0; k < nd; k++){
+    for (const o of diarios){
+      for (const d of o.x.ativas){ acc.pl[d][0] += o.prom[d][k]; acc.pl[d][1] += o.vol[d][k];
+        const v = o.x.ritmo * (o.x.share[d]||0); acc.tn[d][0] += v * o.taxa[d]; acc.tn[d][1] += v; }
+      rP += o.x.diaResp[k]; rT += o.x.ritmo;
+    }
+    plano.push(csat(acc.pl)); tend.push(csat(acc.tn)); respP.push(rP); respT.push(rT);
+  }
+  return { plano, tend, respP, respT };
+}
+
 function renderEvolucao(){
   const el = $('vEvol'); if (!el) return;
-  const p = R.params;
-  const IV = intervalo();
-  const ini = IV.tipo==='ano' ? IV.ini : (S.mes || S.dia.slice(0,7)) + '-01';
-  const fim = IV.tipo==='ano' ? IV.fim : (() => { const f = fimMes(ini.slice(0,7)); return f < diaMax() ? f : diaMax(); })();
-  S.ePer = IV.tipo==='ano' ? 'ano' : 'mes';
-  const dims = R.dimsUso;
-  const cor = corDe(R);
+  const p = R.params, P = periodo();
+  const anual = P.pre === 'ano' || M.diffDays(P.ini, P.fim) > 45 || P.ini.slice(0,7) !== P.fim.slice(0,7);
+  const ini = anual ? p.inicioBase : P.ini.slice(0,7) + '-01';
+  const fimDados = anual ? diaMax() : (() => { const f = fimMes(ini.slice(0,7)); return f < diaMax() ? f : diaMax(); })();
+  const comProj = fimDados >= D.corte && p.dias > 0;
+  const fim = comProj ? p.fim : fimDados;
+  const dims = R.dimsUso, cor = corDe(R);
   const us = planejadas(R).filter((x)=>x.temPlano && fU(x.cod));
-  const minN = S.ePer === 'mes' ? 3 : 20;
+  const minN = 20;
+  const corta = (o) => { const k = M.diffDays(p.inicioBase, ini); return { csat: o.csat.slice(k), resp: o.resp.slice(k) }; };
   const curto = (t) => t.length > 15 ? t.slice(0, 14).trimEnd() + '…' : t;
-  const praca = serieAcum(R.unidades.map((x)=>x.cod), ini, fim, dims, minN);
-  const ser = [{ key:'praca', label:'Praça ' + CFG.pracas[S.praca].nome, short:'Praça', color:'var(--ink)', width:3, ...praca }]
-    .concat(us.map((x) => ({ key:x.cod, label:nomeU(x.cod), short:curto(nomeU(x.cod).replace(/^ER /,'')), color:cor[x.cod], ...serieAcum([x.cod], ini, fim, dims, minN) })));
+  const codsGrupo = filtrado() ? us.map((x)=>x.cod) : R.unidades.map((x)=>x.cod);
+  const grupo = corta(serieAcum(codsGrupo, p.inicioBase, fimDados, dims, minN));
+  const datas = []; for (let d = ini; d <= fim; d = M.addDays(d, 1)) datas.push(d);
+  const pad = (a) => a.concat(Array(datas.length - a.length).fill(null));
+  const nomeG = filtrado() ? nomeFiltro() : 'Praça ' + CFG.pracas[S.praca].nome;
+  const ser = [{ key:'grupo', label:nomeG, short: filtrado() ? curto(nomeFiltro().replace(/^ER /,'')) : 'Praça', color:'var(--ink)', width:3, csat:pad(grupo.csat), resp:pad(grupo.resp) }];
+  if (!(S.loja)) us.forEach((x) => { const s = corta(serieAcum([x.cod], p.inicioBase, fimDados, dims, minN)); ser.push({ key:x.cod, label:nomeU(x.cod), short:curto(nomeU(x.cod).replace(/^ER /,'')), color:cor[x.cod], csat:pad(s.csat), resp:pad(s.resp) }); });
+  // projeções do grupo: plano cumprido x média atual
+  let iCorte = datas.indexOf(D.corte);
+  if (comProj && iCorte >= 0){
+    const T = trajetorias(us, codsGrupo);
+    if (T){
+      const vC = grupo.csat[iCorte], rC = grupo.resp[iCorte];
+      const mk = (arr, v0) => datas.map((d,i) => i < iCorte ? null : i === iCorte ? v0 : arr[i - iCorte - 1] ?? null);
+      ser.push({ key:'plano', label:'Trajetória do plano', short:'Plano', color:'var(--primary)', width:2.5, dash:true,
+        csat: mk(T.plano, vC), resp: mk(T.respP.map((v)=>v + rC), rC) });
+      ser.push({ key:'tend', label:'Tendência na média atual', short:'Tendência', color:'var(--muted)', width:2, dash:true,
+        csat: mk(T.tend, vC), resp: mk(T.respT.map((v)=>v + rC), rC) });
+    }
+  } else iCorte = -1;
   S.eOff = S.eOff || {};
   ser.forEach((s) => { s.off = !!S.eOff[s.key]; });
-  const leg = `<div class="eleg">${ser.map((s)=>`<button type="button" class="ei${s.off?' off':''}" data-k="${s.key}" aria-pressed="${!s.off}"><i style="background:${s.color}"></i>${esc(s.label)}</button>`).join('')}</div>`;
-  const seg = `<div class="ptabs" data-k="ePer">${[['ano','Acumulado do ano'],['mes','Acumulado do mês']].map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${(S.ePer||'ano')===v}">${l}</button>`).join('')}</div>`;
-  const ult = (a) => { for (let i = a.length-1; i>=0; i--) if (a[i]!=null) return a[i]; return null; };
+  const leg = `<div class="eleg">${ser.map((s)=>`<button type="button" class="ei${s.off?' off':''}" data-k="${s.key}" aria-pressed="${!s.off}"><i style="background:${s.color}${s.dash?';outline:2px dashed '+s.color+';outline-offset:1px;background:transparent':''}"></i>${esc(s.label)}</button>`).join('')}</div>`;
+  const band = [datas.indexOf(P.ini), datas.indexOf(P.fim)];
+  if (band[0] < 0 && band[1] >= 0) band[0] = 0;
+  const fimPlano = (s) => { for (let i = s.length-1; i>=0; i--) if (s[i]!=null) return s[i]; return null; };
+  const pl = ser.find((s)=>s.key==='plano'), tn = ser.find((s)=>s.key==='tend');
+  const resumo = pl ? `<div class="evres">
+      <div><span class="l">Até ${fD(D.corte)}</span><b>${fP(grupo.csat[iCorte])}</b></div>
+      <div><span class="l">Cumprindo a diarização, em ${fD(p.fim)}</span><b class="c-ok">${fP(fimPlano(pl.csat))}</b></div>
+      <div><span class="l">Na média atual, em ${fD(p.fim)}</span><b class="${fimPlano(tn.csat) < p.meta ? 'c-bad' : 'c-ok'}">${fP(fimPlano(tn.csat))}</b></div>
+      <div><span class="l">Respostas até ${fD(p.fim)}</span><b>${fI(fimPlano(pl.resp) - grupo.resp[iCorte])}</b><span class="l">no plano x ${fI(fimPlano(tn.resp) - grupo.resp[iCorte])} na média</span></div>
+    </div>` : '';
   el.innerHTML = `
   <section class="card">
-    <div class="card-hd"><div class="hl"><span class="icchip t-primary"><i data-lucide="chart-line"></i></span><div><h2>CSAT TOTAL acumulado</h2><p>${S.ePer==='ano'?'Ano':MESES_L[+ini.slice(5,7)-1]} · ${fD(ini)} a ${fD(fim)}${S.dia?' · dia '+fD(S.dia)+' marcado':''}</p></div></div></div>
-    ${leg}
+    <div class="card-hd"><div class="hl"><span class="icchip t-primary"><i data-lucide="chart-line"></i></span><div><h2>CSAT TOTAL acumulado do ano</h2><p>${anual?'Ano':'Zoom em '+MESES_L[+ini.slice(5,7)-1]} · ${fD(ini)} a ${fD(fimDados)}${comProj?' · projeção até '+fD(p.fim):''}</p></div></div></div>
+    ${resumo}${leg}
     <div class="ech" id="eCsat"></div>
   </section>
   <section class="card">
-    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="message-square-plus"></i></span><div><h2>Respostas acumuladas</h2><p>Total de respostas de ${fD(ini)} a ${fD(fim)}</p></div></div></div>
+    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="message-square-plus"></i></span><div><h2>Respostas acumuladas no ano</h2><p>${anual?'Ano':'Zoom em '+MESES_L[+ini.slice(5,7)-1]} · ${fD(ini)} a ${fD(fimDados)}${comProj?' · projeção até '+fD(p.fim):''}</p></div></div></div>
     <div class="ech" id="eResp"></div>
     <details><summary>Ver como tabela</summary><div class="tw" style="margin-top:10px"><table id="eTab"></table></div></details>
   </section>`;
-  const datas = praca.datas;
-  const marca = S.dia ? datas.indexOf(S.dia) : -1;
-  lineChart($('eCsat'), { marca, datas, series: ser.map((s)=>({...s, vals:s.csat})), ref:{ v:p.meta, label:'Meta ' + fP(p.meta,0) },
-    yFmt:(v,st)=> (v*100).toLocaleString('pt-BR',{maximumFractionDigits: st<0.01?1:0}) + '%', endFmt:(v)=>fP(v), aria:'CSAT TOTAL acumulado por praça e PDV' });
-  lineChart($('eResp'), { marca, datas, series: ser.map((s)=>({...s, vals:s.resp})), zero:true, yPad:0.04,
-    yFmt:(v)=>fI(v), endFmt:(v)=>fI(v), aria:'Respostas acumuladas por praça e PDV' });
-  // tabela: fim de cada mês (ou de cada semana no mês) + último dia
-  const idx = datas.map((d,i)=>i).filter((i)=> i===datas.length-1 || (S.ePer==='mes' ? new Date(datas[i]+'T12:00:00Z').getUTCDay()===0 : datas[i+1].slice(8)==='01'));
-  $('eTab').innerHTML = `<thead><tr><th>Até</th>${ser.map((s)=>`<th class="n">${esc(s.short)} CSAT</th><th class="n">${esc(s.short)} resp.</th>`).join('')}</tr></thead><tbody>${
-    idx.map((i)=>`<tr><td>${fD(datas[i])}</td>${ser.map((s)=>`<td class="n">${fP(s.csat[i])}</td><td class="n">${fI(s.resp[i])}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  const cfgB = { datas, band, proj: iCorte };
+  lineChart($('eCsat'), { ...cfgB, series: ser.map((s)=>({...s, vals:s.csat})), ref:{ v:p.meta, label:'Meta ' + fP(p.meta,0) },
+    yFmt:(v,st)=> (v*100).toLocaleString('pt-BR',{maximumFractionDigits: st<0.01?1:0}) + '%', endFmt:(v)=>fP(v), aria:'CSAT TOTAL acumulado com projeção até o fim do plano' });
+  lineChart($('eResp'), { ...cfgB, series: ser.map((s)=>({...s, vals:s.resp})), zero:true, yPad:0.04,
+    yFmt:(v)=>fI(v), endFmt:(v)=>fI(v), aria:'Respostas acumuladas com projeção até o fim do plano' });
+  const reais = ser.filter((s)=>!s.dash);
+  const lastReal = datas.indexOf(fimDados);
+  const idx = datas.map((d,i)=>i).filter((i)=> i<=lastReal && (i===lastReal || (anual ? datas[i+1].slice(8)==='01' : new Date(datas[i]+'T12:00:00Z').getUTCDay()===0)));
+  $('eTab').innerHTML = `<thead><tr><th>Até</th>${reais.map((s)=>`<th class="n">${esc(s.short)} CSAT</th><th class="n">${esc(s.short)} resp.</th>`).join('')}</tr></thead><tbody>${
+    idx.map((i)=>`<tr><td>${fD(datas[i])}</td>${reais.map((s)=>`<td class="n">${fP(s.csat[i])}</td><td class="n">${fI(s.resp[i])}</td>`).join('')}</tr>`).join('')}</tbody>`;
   el.querySelectorAll('.ei').forEach((b) => b.onclick = () => { S.eOff[b.dataset.k] = !S.eOff[b.dataset.k]; renderEvolucao(); icons(); });
-  el.querySelectorAll('.ptabs[data-k="ePer"] button').forEach((b) => b.onclick = () => { S.ePer = b.dataset.v; renderEvolucao(); icons(); });
 }
 
-// ================= filtros globais: loja, mês e dia
+// ================= filtros globais: gerente, loja e período
 const MESES_L = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const fimMes = (ym) => { const [y,m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0,10); };
 const diaMax = () => D.parcial ? D.parcial.dia : D.corte;
 const fU = (cod) => (!S.gvo || infoU(String(cod)).gvo === S.gvo) && (!S.loja || String(cod) === S.loja);
 const filtrado = () => !!(S.gvo || S.loja);
 const nomeFiltro = () => S.loja ? nomeU(S.loja) : S.gvo;
-/** Período do "realizado": dia escolhido, mês escolhido ou ontem (padrão). */
+const preDefault = () => D.parcial ? 'hoje' : 'ontem';
+const PRESETS = [['hoje','Hoje'],['ontem','Ontem'],['7d','7 dias'],['mes','Mês'],['ano','Ano']];
+const inicioDesafio = () => M.addDays(CFG.baseline || D.corte, 1);
+/** Período escolhido no filtro (sempre dentro da base). */
 function periodo(){
-  if (S.dia) return { ini:S.dia, fim:S.dia, tipo:'dia', label:fD(S.dia), longo:`${dow(S.dia)} ${fD(S.dia)}` };
-  if (S.mes) { const f = fimMes(S.mes); const fim = f < D.corte ? f : D.corte; return { ini:S.mes+'-01', fim, tipo:'mes', label:MESES_L[+S.mes.slice(5)-1], longo:`${MESES_L[+S.mes.slice(5)-1]} (até ${fD(fim)})` }; }
-  return { ini:D.corte, fim:D.corte, tipo:'ontem', label:'Ontem', longo:`ontem · ${fD(D.corte)}` };
+  const dm = diaMax(), base0 = R.params.inicioBase;
+  let pre = S.pPre || preDefault();
+  if (pre === 'hoje' && !D.parcial) pre = 'ontem';
+  let ini, fim, label, longo;
+  if (pre === 'hoje'){ ini = fim = D.parcial.dia; label = 'Hoje'; longo = `hoje · ${dow(ini)} ${fD(ini)} até ${D.parcial.ate}`; }
+  else if (pre === 'ontem'){ ini = fim = D.corte; label = 'Ontem'; longo = `ontem · ${dow(ini)} ${fD(ini)}`; }
+  else if (pre === '7d'){ fim = D.corte; ini = M.addDays(fim, -6); label = '7 dias'; longo = `${fD(ini)} a ${fD(fim)}`; }
+  else if (pre === 'mes'){ fim = dm; ini = dm.slice(0,7) + '-01'; label = MESES_L[+dm.slice(5,7)-1]; longo = `${MESES_L[+dm.slice(5,7)-1]} · ${fD(ini)} a ${fD(fim)}`; }
+  else if (pre === 'ano'){ ini = base0; fim = dm; label = 'Ano'; longo = `ano · ${fD(ini)} a ${fD(fim)}`; }
+  else {
+    ini = S.pIni || D.corte; fim = S.pFim || ini;
+    if (ini > fim) [ini, fim] = [fim, ini];
+    if (ini < base0) ini = base0; if (fim > dm) fim = dm; if (ini > fim) ini = fim;
+    label = ini === fim ? fD(ini) : `${fD(ini)}–${fD(fim)}`;
+    longo = ini === fim ? `${dow(ini)} ${fD(ini)}${D.parcial && ini===D.parcial.dia ? ' até ' + D.parcial.ate : ''}` : `${fD(ini)} a ${fD(fim)}`;
+  }
+  return { pre, ini, fim, label, longo, unico: ini === fim, parcial: !!(D.parcial && fim === D.parcial.dia) };
 }
-/** Intervalo das análises (comentários e evolução): dia, mês ou ano. */
-function intervalo(){
-  if (S.dia) return { ini:S.dia, fim:S.dia, tipo:'dia' };
-  if (S.mes) { const f = fimMes(S.mes); return { ini:S.mes+'-01', fim: f < diaMax() ? f : diaMax(), tipo:'mes' }; }
-  return { ini:R.params.inicioBase, fim:D.corte, tipo:'ano' };
-}
+const intervalo = () => periodo();
 let _cacheDia = {};
-/** Diarização (respostas/dia) que a unidade precisava no dia d, com o plano calculado na véspera. */
+/** Diarização (respostas/dia) que a unidade precisava no dia d, com o plano calculado na véspera. Antes do desafio não há meta. */
 function diarizacao(cod, d){
-  if (d > R.params.fim) return 0;
+  if (d > R.params.fim || d < inicioDesafio()) return 0;
   let Rd = _cacheDia[d];
   if (!Rd) Rd = _cacheDia[d] = (d === R.params.inicioPlano ? R : M.calcular(D, Object.assign(opts(S), { corte: M.addDays(d, -1) })));
   const u = Rd.unidades.find((x) => x.cod === String(cod));
   return u && u.temPlano && u.porDia > 0 ? u.porDia : 0;
 }
+/** Realizado no período e meta (soma das diarizações). O atingimento só conta os dias do desafio. */
 function realizadoPeriodo(x){
   const P = periodo();
   const rd = M.realizadoDiario(D.linhas, x.cod, P.ini, P.fim);
   const o = { resp:0, p:{sup:0,er:0,ent:0}, n:{sup:0,er:0,ent:0} };
   for (const v of Object.values(rd)) { o.resp += v.resp; for (const d of ['sup','er','ent']) { o.p[d] += v[d]; o.n[d] += v.n[d]; } }
-  let meta = 0;
-  for (let d = P.ini; d <= P.fim; d = M.addDays(d, 1)) meta += diarizacao(x.cod, d);
-  return { o, meta };
+  let meta = 0, respMeta = 0;
+  const dias = [];
+  for (let d = P.ini; d <= P.fim; d = M.addDays(d, 1)) { const mt = diarizacao(x.cod, d); const r = rd[d] ? rd[d].resp : 0; meta += mt; if (mt > 0) respMeta += r; dias.push({ d, meta: mt, resp: r, prom: rd[d] ? rd[d].sup : 0 }); }
+  return { o, meta, respMeta, dias };
 }
 function renderFiltros(){
   const usAll = planejadas(R).filter((x)=>x.temPlano);
@@ -1491,22 +1576,18 @@ function renderFiltros(){
   if (S.loja && !lojas.some((x)=>x.cod === S.loja)) S.loja = '';
   $('fGvo').innerHTML = '<option value="">Todos</option>' + gvos.map((g)=>`<option${g===S.gvo?' selected':''}>${esc(g)}</option>`).join('');
   $('fLoja').innerHTML = '<option value="">Todas</option>' + lojas.map((x)=>`<option value="${x.cod}"${x.cod===S.loja?' selected':''}>${esc(nomeU(x.cod))}</option>`).join('');
-  const meses = []; for (let m = R.params.inicioBase.slice(0,7); m <= diaMax().slice(0,7); m = M.addDays(fimMes(m), 1).slice(0,7)) meses.push(m);
-  if (S.mes && !meses.includes(S.mes)) S.mes = '';
-  $('fMes').innerHTML = '<option value="">Ano todo</option>' + meses.slice().reverse().map((m)=>`<option value="${m}"${m===S.mes?' selected':''}>${MESES_L[+m.slice(5)-1]}</option>`).join('');
-  const mDia = S.mes || diaMax().slice(0,7);
-  const dias = []; for (let d = diaMax(); d >= mDia+'-01' && d.slice(0,7) === mDia; d = M.addDays(d, -1)) dias.push(d);
-  if (S.dia && !dias.includes(S.dia)) S.dia = '';
-  $('fDia').innerHTML = `<option value="">${S.mes ? 'Mês inteiro' : 'Ontem (' + fD(D.corte) + ')'}</option>` +
-    dias.map((d)=>`<option value="${d}"${d===S.dia?' selected':''}>${dow(d)} ${fD(d)}${D.parcial && d===D.parcial.dia ? ' (parcial)' : ''}</option>`).join('');
-  $('fLimpar').hidden = !(S.gvo || S.loja || S.mes || S.dia);
+  const P = periodo();
+  $('fPre').innerHTML = PRESETS.map(([v,l]) => `<button type="button" data-v="${v}" aria-pressed="${P.pre===v}"${v==='hoje'&&!D.parcial?' disabled':''}>${v==='hoje'&&D.parcial?l+' <small>até '+esc(D.parcial.ate)+'</small>':v==='mes'?MESES_L[+diaMax().slice(5,7)-1]:l}</button>`).join('');
+  for (const id of ['fIni','fFim']){ const e = $(id); e.min = R.params.inicioBase; e.max = diaMax(); }
+  $('fIni').value = P.ini; $('fFim').value = P.fim;
+  $('fLimpar').hidden = !(S.gvo || S.loja || (S.pPre && S.pPre !== preDefault()));
 }
 
-// ================= resultado de hoje (dia parcial)
-function contaDia(cod, dia){
+// ================= resultado do período (hoje por padrão)
+function contaPer(cod, ini, fim){
   const o = { sup:{p:0,n:0}, er:{p:0,n:0}, ent:{p:0,n:0}, resp:0, det:0 };
   for (const l of D.linhas){
-    if (l[0] !== dia || l[1] !== Number(cod)) continue;
+    if (l[1] !== Number(cod) || l[0] < ini || l[0] > fim) continue;
     ['sup','er','ent'].forEach((d,i) => { const v = l[2+i]; o[d].p += v[3]+v[4]; o[d].n += v[0]+v[1]+v[2]+v[3]+v[4]; });
     o.det += l[2][0]+l[2][1]+l[2][2];
   }
@@ -1514,56 +1595,77 @@ function contaDia(cod, dia){
   return o;
 }
 const mediaDims = (dims, f) => { const v = dims.map(f).filter((x)=>x!=null); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; };
+/** CSAT TOTAL acumulado (do início da base) de um grupo até uma data. */
+function csatAte(cods, ate){
+  const a = { sup:[0,0], er:[0,0], ent:[0,0] };
+  for (const c of cods){ const g = M.agregar(D.linhas, c, R.params.inicioBase, ate); for (const d of ['sup','er','ent']){ a[d][0] += g[d].p; a[d][1] += g[d].n; } }
+  return mediaDims(R.dimsUso, (d)=> a[d][1]>0 ? a[d][0]/a[d][1] : null);
+}
 
 function renderHoje(){
   const el = $('hojeBox'); if (!el) return;
-  const p = R.params;
-  if (!D.parcial || D.parcial.dia !== p.inicioPlano){ el.hidden = true; return; }
+  const p = R.params, P = periodo(), dims = R.dimsUso;
   el.hidden = false;
-  const dia = D.parcial.dia, dims = R.dimsUso;
   const us = planejadas(R).filter((x)=>x.temPlano && fU(x.cod));
   const cor = corDe(R);
+  const vesp = M.addDays(P.ini, -1);
   const rows = us.map((x) => {
-    const h = contaDia(x.cod, dia);
-    const meta = x.porDia>=1 ? x.diaResp[0] : (x.porDia||0);
-    const metaP = x.porDia>=1 && x.diaProm.sup ? x.diaProm.sup[0] : null;
-    const csatDia = mediaDims(dims, (d)=> h[d].n>0 ? h[d].p/h[d].n : null);
-    const comHoje = mediaDims(x.dimsUso, (d)=> (x.base[d].n + h[d].n)>0 ? (x.base[d].p + h[d].p)/(x.base[d].n + h[d].n) : null);
-    return { x, h, meta, metaP, csatDia, comHoje, delta: comHoje!=null && x.totalAtual!=null ? comHoje - x.totalAtual : null, ating: meta>0 ? h.resp/meta : null };
-  }).sort((a,b)=> b.meta - a.meta);
-  // total (pooled) — praça inteira quando não há filtro
-  const base = filtrado() ? us : R.unidades;
+    const h = contaPer(x.cod, P.ini, P.fim), rp = realizadoPeriodo(x);
+    const csatPer = mediaDims(dims, (d)=> h[d].n>0 ? h[d].p/h[d].n : null);
+    const acum = csatAte([x.cod], P.fim), antes = csatAte([x.cod], vesp);
+    return { x, h, rp, meta: rp.meta, csatPer, acum, delta: acum!=null && antes!=null ? acum - antes : null, ating: rp.meta>0 ? rp.respMeta/rp.meta : null };
+  }).sort((a,b)=> b.meta - a.meta || b.h.resp - a.h.resp);
+  const codsT = filtrado() ? us.map((x)=>x.cod) : R.unidades.map((x)=>x.cod);
   const tot = { sup:{p:0,n:0}, er:{p:0,n:0}, ent:{p:0,n:0}, resp:0, det:0 };
-  base.forEach((x) => { const h = contaDia(x.cod, dia); for (const d of ['sup','er','ent']){ tot[d].p += h[d].p; tot[d].n += h[d].n; } tot.resp += h.resp; tot.det += h.det; });
-  const metaT = rows.reduce((a,r)=>a+r.meta,0);
-  const prom = tot.sup.p;
-  const csatDiaT = mediaDims(dims, (d)=> tot[d].n>0 ? tot[d].p/tot[d].n : null);
-  const atual = filtrado() ? grupoCSAT(us).total : R.atual.total;
-  const comHojeT = filtrado() ? grupoCSAT(us, (x,d)=>{ const h = contaDia(x.cod, dia); return [h[d].p, h[d].n]; }).total
-                              : grupoCSAT(R.unidades, (x,d)=>{ const h = contaDia(x.cod, dia); return [h[d].p, h[d].n]; }).total;
-  const dT = comHojeT!=null && atual!=null ? comHojeT - atual : null;
-  const atT = metaT>0 ? tot.resp/metaT : null;
+  codsT.forEach((c) => { const h = contaPer(c, P.ini, P.fim); for (const d of ['sup','er','ent']){ tot[d].p += h[d].p; tot[d].n += h[d].n; } tot.resp += h.resp; tot.det += h.det; });
+  const metaT = rows.reduce((a,r)=>a+r.meta,0), respMetaT = rows.reduce((a,r)=>a+r.rp.respMeta,0);
+  const atT = metaT>0 ? respMetaT/metaT : null;
+  const csatPerT = mediaDims(dims, (d)=> tot[d].n>0 ? tot[d].p/tot[d].n : null);
+  const acumT = csatAte(codsT, P.fim), antesT = csatAte(codsT, vesp);
+  const dT = acumT!=null && antesT!=null ? acumT - antesT : null;
   const sinal = (v) => v==null ? '—' : (v>=0?'+':'−') + f2pp(Math.abs(v));
   const barra = (v) => `<div class="hb2"><i class="${atingCls(v)}" style="width:${Math.min(100,(v||0)*100)}%"></i></div>`;
+  const fmtM = (v) => v>=1 ? fI(v) : f1(v);
+  const titulo = P.pre==='hoje' ? 'Resultado de hoje' : P.pre==='ontem' ? 'Resultado de ontem' : P.unico ? 'Resultado do dia' : 'Resultado do período';
+  const semMeta = metaT === 0;
+  // visão diária do período (barras = realizado, traço = diarização)
+  let diario = '';
+  if (!P.unico){
+    const porDia = {};
+    rows.forEach((r) => r.rp.dias.forEach((o) => { const q = porDia[o.d] = porDia[o.d] || { resp:0, meta:0, prom:0 }; q.resp += o.resp; q.meta += o.meta; q.prom += o.prom; }));
+    if (filtrado() === false) codsT.filter((c)=>!us.some((x)=>x.cod===String(c))).forEach((c) => { const rd = M.realizadoDiario(D.linhas, c, P.ini, P.fim); for (const [d,o] of Object.entries(rd)) { const q = porDia[d] = porDia[d] || { resp:0, meta:0, prom:0 }; q.resp += o.resp; q.prom += o.sup; } });
+    let dd = Object.keys(porDia).sort().map((d)=>({ d, ...porDia[d] }));
+    let grao = 'dia';
+    if (dd.length > 45){ grao = 'mês'; const mm = {}; dd.forEach((o)=>{ const k = o.d.slice(0,7); const q = mm[k] = mm[k] || { d:k+'-01', resp:0, meta:0, prom:0 }; q.resp += o.resp; q.meta += o.meta; q.prom += o.prom; }); dd = Object.values(mm); }
+    const mx = Math.max(1, ...dd.map((o)=>Math.max(o.resp, o.meta)));
+    diario = `<h3 class="rk">Por ${grao}: realizado x diarização</h3><div class="pdd">${dd.map((o)=>{ const at = o.meta>0 ? o.resp/o.meta : null;
+      return `<div class="pdd-i" data-tip="${esc(`<b>${grao==='mês'?MESES_L[+o.d.slice(5,7)-1]:dow(o.d)+' '+fD(o.d)}</b><br>${fI(o.resp)} respostas · ${fI(o.prom)} notas 4–5${o.meta>0?`<br>Diarização: ${fmtM(o.meta)} · ${pctAting(at)}`:'<br>Sem diarização (antes do desafio)'}`)}">
+        <div class="pdd-c"><div class="pdd-b ${o.meta>0?atingCls(at):'na'}" style="height:${o.resp/mx*100}%"></div>${o.meta>0?`<div class="pdd-m" style="bottom:${o.meta/mx*100}%"></div>`:''}</div>
+        <span>${grao==='mês'?MESES[+o.d.slice(5,7)-1]:o.d.slice(8)}</span></div>`; }).join('')}</div>
+      <div class="legend" style="margin:4px 0 12px"><span><i style="width:10px;height:10px;border-radius:2px;background:var(--primary)"></i>Bateu a diarização</span><span><i style="width:10px;height:10px;border-radius:2px;background:var(--warn)"></i>70–94%</span><span><i style="width:10px;height:10px;border-radius:2px;background:var(--crit)"></i>Abaixo de 70%</span><span><i style="width:14px;height:3px;background:var(--ink)"></i>Diarização do dia</span></div>`;
+  }
   el.innerHTML = `
-    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="sun"></i></span><div><h2>Resultado de hoje</h2><p>${dow(dia)} ${fD(dia)} · até ${esc(D.parcial.ate)}</p></div></div>
-      <button class="btn ghost sm" type="button" id="hojeCom"><i data-lucide="message-square-text"></i>Comentários de hoje</button></div>
+    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="${P.unico?'sun':'calendar-range'}"></i></span><div><h2>${titulo}</h2><p>${esc(P.longo)}${filtrado()?' · '+esc(nomeFiltro()):''}</p></div></div>
+      <button class="btn ghost sm" type="button" id="hojeCom"><i data-lucide="message-square-text"></i>Comentários do período</button></div>
     <div class="hstrip">
-      <div><span class="l">Respostas</span><b>${fI(tot.resp)} <small>de ${metaT>=1?fI(metaT):f1(metaT)}</small></b>${barra(atT)}<span class="l">${pctAting(atT)} da meta do dia</span></div>
-      <div><span class="l">Notas 4–5</span><b class="c-ok">${fI(prom)}</b><span class="l">${tot.resp?fP(prom/tot.resp,0)+' das respostas':'—'}</span></div>
+      <div><span class="l">Respostas</span><b>${fI(tot.resp)}</b><span class="l">${P.unico?'no dia':'no período'}</span></div>
+      <div><span class="l">Diarização${respMetaT!==tot.resp && !semMeta ? ' (desde ' + fD(inicioDesafio()) + ')' : ''}</span>${semMeta?'<b class="muted">—</b><span class="l">sem diarização no período</span>':`<b>${fI(respMetaT)} <small>de ${fmtM(metaT)}</small></b>${barra(atT)}<span class="l">${pctAting(atT)} atingido${P.parcial?' · dia em andamento':''}</span>`}</div>
+      <div><span class="l">Notas 4–5</span><b class="c-ok">${fI(tot.sup.p)}</b><span class="l">${tot.resp?fP(tot.sup.p/tot.resp,0)+' das respostas':'—'}</span></div>
       <div><span class="l">Notas 1–3</span><b class="${tot.det?'c-bad':''}">${fI(tot.det)}</b><span class="l">em Supervisora</span></div>
-      <div><span class="l">CSAT do dia</span><b>${fP(csatDiaT)}</b><span class="l">${csatDiaT==null?'sem respostas':csatDiaT>=p.meta?'acima da meta':'abaixo da meta'}</span></div>
-      <div><span class="l">CSAT acumulado com hoje</span><b>${fP(comHojeT)}</b><span class="delta ${dT==null?'flat':dT>=0?'up':'down'}">${sinal(dT)} vs ontem</span></div>
+      <div><span class="l">CSAT ${P.unico?'do dia':'do período'}</span><b>${fP(csatPerT)}</b><span class="l">${csatPerT==null?'sem respostas':csatPerT>=p.meta?'acima da meta':'abaixo da meta'}</span></div>
+      <div><span class="l">CSAT acumulado até ${fD(P.fim)}</span><b>${fP(acumT)}</b><span class="delta ${dT==null?'flat':dT>=0?'up':'down'}">${sinal(dT)} ${P.unico?'no dia':'no período'}</span></div>
     </div>
-    <div class="tw"><table class="thoje"><thead><tr><th>PDV</th><th class="n">Respostas</th><th>Meta do dia</th><th class="n">4–5</th><th class="n">1–3</th><th class="n">CSAT do dia</th><th class="n">Acumulado</th><th class="n">Efeito de hoje</th></tr></thead><tbody>${
+    ${diario}
+    <div class="tw"><table class="thoje"><thead><tr><th>PDV</th><th class="n">Respostas</th><th>Diarização</th><th class="n">4–5</th><th class="n">1–3</th><th class="n">CSAT ${P.unico?'do dia':'período'}</th><th class="n">Acumulado</th><th class="n">Efeito</th></tr></thead><tbody>${
       rows.map((r)=>`<tr><td><span class="sw" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${cor[r.x.cod]};margin-right:7px"></span><b>${esc(nomeU(r.x.cod))}</b></td>
-        <td class="n"><b>${fI(r.h.resp)}</b> <span class="muted">/ ${r.meta>=1?fI(r.meta):f1(r.meta)}</span></td>
-        <td><div class="minib">${barra(r.ating)}<span class="badge ${atingCls(r.ating)}">${pctAting(r.ating)}</span></div></td>
+        <td class="n"><b>${fI(r.h.resp)}</b>${r.meta>0 && r.rp.respMeta===r.h.resp?` <span class="muted">/ ${fmtM(r.meta)}</span>`:r.meta>0?` <span class="muted">(${fI(r.rp.respMeta)} / ${fmtM(r.meta)} no desafio)</span>`:''}</td>
+        <td>${r.meta>0?`<div class="minib">${barra(r.ating)}<span class="badge ${atingCls(r.ating)}">${pctAting(r.ating)}</span></div>`:'<span class="muted">—</span>'}</td>
         <td class="n">${fI(r.h.sup.p)}</td><td class="n${r.h.det?' c-bad':''}">${fI(r.h.det)}</td>
-        <td class="n">${fP(r.csatDia)}</td><td class="n">${fP(r.comHoje)}</td>
+        <td class="n">${fP(r.csatPer)}</td><td class="n">${fP(r.acum)}</td>
         <td class="n"><span class="delta ${r.delta==null||Math.abs(r.delta)<5e-5?'flat':r.delta>0?'up':'down'}">${sinal(r.delta)}</span></td></tr>`).join('')
     }</tbody></table></div>`;
-  $('hojeCom').onclick = () => { S.dia = dia; S.mes = ''; S.view = 'coment'; S.cTema = null; render(); window.scrollTo({ top: $('vtabs').offsetTop - 10, behavior: 'smooth' }); };
+  el.querySelectorAll('.pdd-i').forEach((b) => { b.onmouseenter = (e) => showTip(e, b.dataset.tip); b.onmousemove = moveTip; b.onmouseleave = hideTip; });
+  $('hojeCom').onclick = () => { S.view = 'coment'; S.cTema = null; render(); window.scrollTo({ top: $('vtabs').offsetTop - 10, behavior: 'smooth' }); };
 }
 
 function resumoZap(){
