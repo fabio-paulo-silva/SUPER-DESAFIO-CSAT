@@ -16,6 +16,7 @@ from datetime import datetime
 
 import pandas as pd
 from temas_comentarios import TODOS, classificar, mascarar
+import revendedores
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -72,6 +73,13 @@ COLS = {
 }
 ID_COL = "ID da Pesquisa"
 # comentários abertos (classificados em temas; só o texto de notas 1–3 vai para o painel, mascarado)
+# colunas opcionais: cidade (visão por cidade) e revendedor/ciclo (página Ativação CSAT)
+OPC = {
+    "Cidade cadastro revendedor": "cidade",
+    "Código do Revendedor": "rev",
+    "Ciclo": "ciclo",
+    "Celular": "celular",  # só vai para ativacao.js (local)
+}
 COMENT = {
     "Satisfação Supervisora Pergunta Aberta": "c_sup",
     "Satisfação ER Pergunta Aberta": "c_er",
@@ -88,7 +96,7 @@ def ler_export(caminho):
             break
     if linha_cab is None:
         raise ValueError(f"Cabeçalho 'Data da resposta' não encontrado em {caminho}")
-    usar = list(COLS) + [ID_COL] + list(COMENT)
+    usar = list(COLS) + [ID_COL] + list(COMENT) + list(OPC)
     df = pd.read_excel(caminho, sheet_name=0, header=linha_cab, dtype=str,
                        usecols=lambda c: c in usar)
     faltando = [c for c in COLS if c not in df.columns]
@@ -132,10 +140,13 @@ def main():
         df = df.drop_duplicates(subset=[ID_COL])
         if antes != len(df):
             print(f"removidas {antes - len(df)} respostas duplicadas (mesmo ID da Pesquisa)")
-    for c in COMENT:
+    for c in list(COMENT) + list(OPC):
         if c not in df.columns:
             df[c] = pd.NA
-    df = df.rename(columns={**COLS, **COMENT})[list(COLS.values()) + list(COMENT.values())]
+    df = df.rename(columns={**COLS, **COMENT, **OPC})[list(COLS.values()) + list(COMENT.values()) + list(OPC.values())]
+    df_rev = df[["rev", "ciclo", "data", "sup", "celular"]].copy()
+    df_rev["dia"] = pd.to_datetime(df_rev["data"], errors="coerce").dt.strftime("%Y-%m-%d")
+    df_rev["sup"] = pd.to_numeric(df_rev["sup"], errors="coerce")
 
     codigos = {c for p in CONFIG["pracas"].values() for c in p["unidades"]}
     df["cod"] = pd.to_numeric(df["cod"], errors="coerce")
@@ -156,6 +167,29 @@ def main():
             vc = g[d].dropna().astype(int).value_counts()
             cont.append([int(vc.get(k, 0)) for k in range(1, 6)])
         linhas.append([dia, int(cod)] + cont)
+
+    # CSAT por cidade (cidade de cadastro do revendedor)
+    cidade_idx = {}
+    df["cidade"] = df["cidade"].fillna("").astype(str).str.strip().str.upper()
+    linhas_cidade = []
+    for (dia, cod, cid), g in df.groupby(["dia", "cod", "cidade"]):
+        if not cid:
+            continue
+        if cid not in cidade_idx:
+            cidade_idx[cid] = len(cidade_idx)
+        cont = []
+        for d in ("sup", "er", "ent"):
+            vc = g[d].dropna().astype(int).value_counts()
+            cont.append([int(vc.get(k, 0)) for k in range(1, 6)])
+        linhas_cidade.append([dia, int(cod), cidade_idx[cid]] + cont)
+
+    ciclo_pub, ativacao = revendedores.montar(PASTA, df_rev, codigos, cidade_idx)
+    if ativacao:
+        with open(os.path.join(PASTA, "ativacao.js"), "w", encoding="utf-8") as f:
+            f.write("// Gerado por atualizar_dados.py - DADOS PESSOAIS: fica só no computador (.gitignore)\n")
+            f.write("window.ATIVACAO = ")
+            json.dump(ativacao, f, ensure_ascii=False, separators=(",", ":"))
+            f.write(";\n")
 
     comentarios = []
     for r in df.itertuples():
@@ -197,6 +231,9 @@ def main():
         "linhas": linhas,
         "temas": [[tid, nome, acao] for tid, nome, _, acao in TODOS],
         "comentarios": comentarios,
+        "cidades": [c for c, _ in sorted(cidade_idx.items(), key=lambda kv: kv[1])],
+        "linhas_cidade": linhas_cidade,
+        "ciclo": ciclo_pub,
     }
     with open(os.path.join(PASTA, "dados.js"), "w", encoding="utf-8") as f:
         f.write("// Gerado por atualizar_dados.py - contagens agregadas + comentarios de notas 1-3 mascarados\n")

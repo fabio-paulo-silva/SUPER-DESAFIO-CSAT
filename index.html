@@ -276,6 +276,12 @@ h3.rk{font-size:14px;margin:14px 0 8px;color:var(--ink-2);font-weight:600}
 .evres .l{font-size:12px;color:var(--ink-2);font-weight:600}
 .evres b{font-family:var(--font-display);font-size:22px;font-weight:700}
 @media (max-width:640px){.hstrip{grid-template-columns:1fr 1fr}.hstrip b{font-size:19px}.fld input[type=date]{min-width:0;width:100%}}
+.cbar{display:flex;align-items:center;gap:8px;min-width:170px}
+.cbar .cb{position:relative;flex:1;height:8px;border-radius:999px;background:var(--surface-2)}
+.cbar .cb i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--crit)}
+.cbar .cb i.ok{background:var(--primary)}
+.cbar .cb b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:2px}
+.cbar span{font-weight:700;font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:9px;font-size:14px;display:none;z-index:60}
 .chip{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 5px;margin-left:4px;font-weight:500}
 @media (max-width:640px){
@@ -470,6 +476,7 @@ details.card>summary{margin:0}
     <div class="chips">
       <div class="glass"><i data-lucide="calendar-days"></i><span id="hData"></span></div>
       <div class="glass"><i data-lucide="target"></i><span id="hMeta"></span></div>
+      <a class="glass" href="ativacao.html" style="text-decoration:none"><i data-lucide="megaphone"></i><span class="opt">Ativação CSAT</span></a>
       <button class="glass" id="bZap" type="button"><i data-lucide="message-circle"></i><span class="opt">Resumo WhatsApp</span></button>
       <button class="glass" id="bTema" type="button" aria-label="Alternar tema claro/escuro"><i data-lucide="sun-moon"></i></button>
     </div>
@@ -507,6 +514,8 @@ details.card>summary{margin:0}
   </div>
 
   <div id="vEvol" class="sec" hidden></div>
+
+  <div id="vCid" class="sec" hidden></div>
 
   <div id="vComent" class="sec" hidden></div>
 
@@ -684,7 +693,7 @@ function render(){
   $('hMeta').textContent = `Meta ${fP(p.meta,0)}`;
   _cacheDia = {}; renderFiltros();
   const pz = renderPremio(); const hz = renderHero(pz); renderVTabs(hz.fora, pz);
-  renderCenarios(); renderPlano(); renderCascata(); renderHeat(); renderMult(); renderAcomp(); renderComentarios(); renderEvolucao(); renderHoje(); renderFoot(); icons();
+  renderCenarios(); renderPlano(); renderCascata(); renderHeat(); renderMult(); renderAcomp(); renderComentarios(); renderEvolucao(); renderCidades(); renderHoje(); renderFoot(); icons();
 }
 
 function renderAlert(){
@@ -1139,12 +1148,12 @@ function renderHero(pz){
 
 function renderVTabs(fora, pz){
   const ganh = pz ? [pz.canal, ...pz.linhas].filter((g)=>g.est.k==='win').length : 0;
-  const tabs = [['plano','list-checks','Plano do dia', fora], ['evol','chart-line','Evolução', null], ['coment','message-square-text','Comentários e focos', null], ['premio','trophy','Premiação', null], ['sim','sliders-horizontal','Simulações', null]];
+  const tabs = [['plano','list-checks','Plano do dia', fora], ['evol','chart-line','Evolução', null], ['cid','map-pin','Cidades', null], ['coment','message-square-text','Comentários e focos', null], ['premio','trophy','Premiação', null], ['sim','sliders-horizontal','Simulações', null]];
   $('vtabs').innerHTML = tabs.map(([k,ic,l,c]) => `<button type="button" class="tab${S.view===k?' on':''}" data-v="${k}" aria-pressed="${S.view===k}"><i data-lucide="${ic}"></i>${l}${c?`<span class="cnt">${c}</span>`:''}</button>`).join('');
   $('vtabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; S.view = b.dataset.v; salvar(); showView(); renderVTabs(fora, pz); icons(); };
   showView();
 }
-function showView(){ $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
+function showView(){ $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
 function icons(){ try { if (window.lucide) window.lucide.createIcons(); } catch(e){} }
 
 // ================= premiação e ranking de gerentes
@@ -1666,6 +1675,56 @@ function renderHoje(){
     }</tbody></table></div>`;
   el.querySelectorAll('.pdd-i').forEach((b) => { b.onmouseenter = (e) => showTip(e, b.dataset.tip); b.onmousemove = moveTip; b.onmouseleave = hideTip; });
   $('hojeCom').onclick = () => { S.view = 'coment'; S.cTema = null; render(); window.scrollTo({ top: $('vtabs').offsetTop - 10, behavior: 'smooth' }); };
+}
+
+// ================= CSAT por cidade (cidade de cadastro do revendedor)
+function renderCidades(){
+  const el = $('vCid'); if (!el) return;
+  const p = R.params, P = periodo(), dims = R.dimsUso;
+  const CID = D.cidades || [], LC = D.linhas_cidade || [];
+  const cods = new Set((filtrado() ? planejadas(R).filter((x)=>x.temPlano && fU(x.cod)) : R.unidades).map((x)=>Number(x.cod)));
+  const vazio = () => ({ sup:[0,0], er:[0,0], ent:[0,0] });
+  const add = (o, l) => ['sup','er','ent'].forEach((d,i) => { const v = l[3+i]; o[d][0] += v[3]+v[4]; o[d][1] += v[0]+v[1]+v[2]+v[3]+v[4]; });
+  const csat = (o) => mediaDims(dims, (d)=> o[d][1]>0 ? o[d][0]/o[d][1] : null);
+  const ano = {}, per = {};
+  for (const l of LC){
+    if (!cods.has(l[1]) || l[0] < p.inicioBase) continue;
+    if (l[0] <= D.corte) add(ano[l[2]] = ano[l[2]] || vazio(), l);
+    if (l[0] >= P.ini && l[0] <= P.fim) add(per[l[2]] = per[l[2]] || vazio(), l);
+  }
+  // ciclo: ativos (receberam) x responderam, por cidade, nas ERs filtradas
+  const ciclo = {};
+  for (const [er, ci, n, r] of ((D.ciclo || {}).por_er_cidade || [])) {
+    if (!cods.has(Number(er)) || ci < 0) continue;
+    const o = ciclo[ci] = ciclo[ci] || [0,0]; o[0] += n; o[1] += r;
+  }
+  const idxs = [...new Set([...Object.keys(ano), ...Object.keys(ciclo)].map(Number))];
+  let rows = idxs.map((i) => { const a = ano[i] || vazio(), q = per[i] || vazio(), c = ciclo[i] || [0,0];
+    return { nome: CID[i] || '—', a, q, csat: csat(a), resp: a.sup[1], csatP: csat(q), respP: q.sup[1], ativos: c[0], respC: c[1] }; });
+  rows.sort((x,y) => y.resp - x.resp);
+  const grandes = rows.filter((r)=>r.resp >= 20 || r.ativos >= 100), peq = rows.filter((r)=>!(r.resp >= 20 || r.ativos >= 100));
+  if (peq.length){ const o = { nome:`Outras ${peq.length} cidades`, a:vazio(), q:vazio(), resp:0, respP:0, ativos:0, respC:0, outras:true };
+    peq.forEach((r) => { for (const d of ['sup','er','ent']){ o.a[d][0] += r.a[d][0]; o.a[d][1] += r.a[d][1]; o.q[d][0] += r.q[d][0]; o.q[d][1] += r.q[d][1]; } o.resp += r.resp; o.respP += r.respP; o.ativos += r.ativos; o.respC += r.respC; });
+    o.csat = csat(o.a); o.csatP = csat(o.q); grandes.push(o); }
+  rows = grandes;
+  // impacto: quanto cada cidade "puxa" o CSAT da praça para baixo da meta (pontos x volume)
+  const tot = rows.reduce((s,r)=>s+r.resp,0);
+  const impacto = rows.filter((r)=>r.csat!=null && r.csat < p.meta && !r.outras).map((r)=>({ r, v:(p.meta - r.csat) * r.resp / Math.max(1,tot) })).sort((a,b)=>b.v-a.v);
+  const pos = (v) => Math.max(0, Math.min(100, (v - 0.75) / 0.25 * 100));
+  const csatBar = (v) => v==null ? '<span class="muted">—</span>' : `<div class="cbar"><div class="cb"><i class="${v>=p.meta?'ok':'bad'}" style="width:${pos(v)}%"></i><b style="left:${pos(p.meta)}%"></b></div><span class="${v>=p.meta?'c-ok':'c-bad'}">${fP(v)}</span></div>`;
+  const tx = (r) => r.ativos ? r.respC / r.ativos : null;
+  el.innerHTML = `
+  <section class="card">
+    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="map-pin"></i></span><div><h2>CSAT por cidade</h2><p>Cidade de cadastro do revendedor · acumulado do ano até ${fD(D.corte)} · período: ${esc(P.longo)}${filtrado()?' · '+esc(nomeFiltro()):''}</p></div></div></div>
+    ${impacto.length ? `<div class="cmini">${impacto.slice(0,3).map((o,k)=>`<div><span class="l">${k===0?'Maior impacto abaixo da meta':'Também abaixo da meta'}</span><b>${esc(o.r.nome)}</b><span class="l">${fP(o.r.csat)} · ${fI(o.r.resp)} respostas no ano · −${f2pp(o.v)} na praça</span></div>`).join('')}</div>` : ''}
+    <div class="tw"><table class="tcid"><thead><tr><th>Cidade</th><th>CSAT TOTAL (ano)</th><th class="n">Sup</th><th class="n">ER</th><th class="n">Ent</th><th class="n">Respostas (ano)</th><th class="n">CSAT ${esc(P.label.toLowerCase())}</th><th class="n">Resp. ${esc(P.label.toLowerCase())}</th><th class="n">Receberam no ciclo</th><th class="n">Responderam</th><th class="n">Taxa de resposta</th></tr></thead><tbody>${
+      rows.map((r)=>`<tr${r.outras?' class="tot"':''}><td><b>${esc(r.nome)}</b></td><td>${csatBar(r.csat)}</td>
+        ${['sup','er','ent'].map((d)=>`<td class="n">${r.a[d][1]? fP(r.a[d][0]/r.a[d][1]) : '—'}</td>`).join('')}
+        <td class="n">${fI(r.resp)}</td><td class="n ${r.csatP==null?'':r.csatP>=p.meta?'c-ok':'c-bad'}">${fP(r.csatP)}</td><td class="n">${fI(r.respP)}</td>
+        <td class="n">${r.ativos?fI(r.ativos):'—'}</td><td class="n">${r.ativos?fI(r.respC):'—'}</td><td class="n">${tx(r)==null?'—':fP(tx(r),1)}</td></tr>`).join('')
+    }</tbody></table></div>
+    <p class="sub" style="margin-top:10px">Receberam = revendedores ativos no ciclo ${esc((D.ciclo||{}).ciclo||'')} (I, R, A0) · Responderam = com resposta do CSAT no ciclo. Detalhe por revendedor na página <a href="ativacao.html">Ativação CSAT</a>.</p>
+  </section>`;
 }
 
 function resumoZap(){
