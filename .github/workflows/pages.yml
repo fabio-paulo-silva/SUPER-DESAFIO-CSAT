@@ -25,7 +25,7 @@ jobs:
       - name: Montar o site
         run: |
           mkdir -p _site
-          cp index.html ativacao.html motor.js dados.js _site/
+          cp index.html ativacao.html motor.js dados.js ativacao_cripto.js _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

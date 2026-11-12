@@ -12,3 +12,4 @@ desktop.ini
 # Configuração local do Claude
 .claude/
 ativacao.js
+senhas_ativacao.json

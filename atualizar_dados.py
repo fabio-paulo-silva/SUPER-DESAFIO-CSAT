@@ -17,6 +17,7 @@ from datetime import datetime
 import pandas as pd
 from temas_comentarios import TODOS, classificar, mascarar
 import revendedores
+import cripto_ativacao
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -190,6 +191,9 @@ def main():
             f.write("window.ATIVACAO = ")
             json.dump(ativacao, f, ensure_ascii=False, separators=(",", ":"))
             f.write(";\n")
+        # versão criptografada (vai para o site; abre com a senha da praça)
+        cripto_ativacao.gravar(PASTA, ativacao, {sg: [c for c, papel in pr["unidades"].items() if papel != "fora"]
+                                                 for sg, pr in CONFIG["pracas"].items()})
 
     comentarios = []
     for r in df.itertuples():

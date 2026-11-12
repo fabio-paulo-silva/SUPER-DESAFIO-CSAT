@@ -282,6 +282,25 @@ h3.rk{font-size:14px;margin:14px 0 8px;color:var(--ink-2);font-weight:600}
 .cbar .cb i.ok{background:var(--primary)}
 .cbar .cb b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:2px}
 .cbar span{font-weight:700;font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+.aviso-at{display:flex;gap:14px;align-items:flex-start}
+.atform{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.atform input[type=password]{height:40px;border:1px solid var(--border);border-radius:10px;background:var(--page);padding:0 12px;min-width:240px;font:inherit;color:inherit}
+.at-f .row{margin-top:4px}
+.lst td{white-space:nowrap}
+.lst td.nm{white-space:normal;min-width:180px}
+.wa{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:6px 12px;font-weight:700;font-size:13px;text-decoration:none;background:#25d366;color:#05301a;border:0;cursor:pointer}
+.wa:hover{filter:brightness(1.05)}
+.wa.feito{background:var(--surface-2);color:var(--ink-2)}
+.wa svg{width:15px;height:15px}
+.scr textarea{width:100%;min-height:120px;border:1px solid var(--border);border-radius:12px;background:var(--page);padding:10px 12px;font:inherit;color:inherit;resize:vertical}
+.scr .ph{font-size:12px;color:var(--ink-2);margin-top:6px}
+.scr .ph code{background:var(--surface-2);border-radius:6px;padding:1px 6px}
+.prev{white-space:pre-wrap;background:var(--surface-2);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:10px}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:13px;color:var(--ink-2)}
+.fld input[type=search]{height:38px;border:1px solid var(--border);border-radius:10px;background:var(--page);padding:0 12px;min-width:220px;font:inherit;color:inherit}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-2);height:38px}
+.st-ok{color:var(--good-ink);font-weight:700} .st-pend{color:var(--crit-ink);font-weight:700}
+@media (max-width:640px){.fld input[type=search],.atform input[type=password]{min-width:0;width:100%}.at-f .fld{width:100%}}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:9px;font-size:14px;display:none;z-index:60}
 .chip{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 5px;margin-left:4px;font-weight:500}
 @media (max-width:640px){
@@ -476,7 +495,7 @@ details.card>summary{margin:0}
     <div class="chips">
       <div class="glass"><i data-lucide="calendar-days"></i><span id="hData"></span></div>
       <div class="glass"><i data-lucide="target"></i><span id="hMeta"></span></div>
-      <a class="glass" href="ativacao.html" style="text-decoration:none"><i data-lucide="megaphone"></i><span class="opt">Ativação CSAT</span></a>
+      <button class="glass" id="bAtiv" type="button"><i data-lucide="megaphone"></i><span class="opt">Ativação CSAT</span></button>
       <button class="glass" id="bZap" type="button"><i data-lucide="message-circle"></i><span class="opt">Resumo WhatsApp</span></button>
       <button class="glass" id="bTema" type="button" aria-label="Alternar tema claro/escuro"><i data-lucide="sun-moon"></i></button>
     </div>
@@ -516,6 +535,8 @@ details.card>summary{margin:0}
   <div id="vEvol" class="sec" hidden></div>
 
   <div id="vCid" class="sec" hidden></div>
+
+  <div id="vAtiv" class="sec" hidden></div>
 
   <div id="vComent" class="sec" hidden></div>
 
@@ -596,6 +617,8 @@ details.card>summary{margin:0}
 
 <script src="dados.js"></script>
 <script src="motor.js"></script>
+<script src="ativacao_cripto.js" onerror="window.ATIV_CRIPTO=null"></script>
+<script>if (location.protocol === "file:") document.write('<script src="ativacao.js" onerror="window.ATIVACAO=null"><\/script>');</script>
 <script>
 (function(){
 'use strict';
@@ -619,7 +642,7 @@ const dow = (iso) => DOWL[new Date(iso+'T12:00:00Z').getUTCDay()];
 const esc = (s) => String(s).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ---------- estado
-const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', pPre:'', pIni:'', pFim:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
+const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', aEr:'', aCid:'', aStatus:'pend', aAtv:'', aQ:'', aFone:true, aPag:0, pPre:'', pIni:'', pFim:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
 let S = Object.assign({}, PADRAO);
 try { const s = JSON.parse(localStorage.getItem('csat_desafio_estado')||'null'); if (s) S = Object.assign(S, {praca:s.praca||S.praca, heat:s.heat||S.heat, view:s.view||S.view}); } catch(e){}
 try { const t = localStorage.getItem('csat_desafio_tema'); if (t) document.documentElement.dataset.theme = t; } catch(e){}
@@ -670,6 +693,7 @@ $('fLoja').addEventListener('change', (e) => { S.loja = e.target.value; render()
 $('fPre').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; S.pPre = b.dataset.v; render(); });
 $('fIni').addEventListener('change', (e) => { if (!e.target.value) return; const P = periodo(); S.pPre = 'custom'; S.pIni = e.target.value; S.pFim = e.target.value > P.fim ? e.target.value : P.fim; render(); });
 $('fFim').addEventListener('change', (e) => { if (!e.target.value) return; const P = periodo(); S.pPre = 'custom'; S.pFim = e.target.value; S.pIni = e.target.value < P.ini ? e.target.value : P.ini; render(); });
+$('bAtiv').addEventListener('click', () => { S.view = 'ativ'; render(); window.scrollTo({ top: $('vtabs').offsetTop - 10, behavior: 'smooth' }); });
 $('fLimpar').addEventListener('click', () => { S.gvo = S.loja = ''; S.pPre = ''; S.pIni = S.pFim = ''; render(); });
 $('bTema').onclick = () => {
   const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -693,7 +717,7 @@ function render(){
   $('hMeta').textContent = `Meta ${fP(p.meta,0)}`;
   _cacheDia = {}; renderFiltros();
   const pz = renderPremio(); const hz = renderHero(pz); renderVTabs(hz.fora, pz);
-  renderCenarios(); renderPlano(); renderCascata(); renderHeat(); renderMult(); renderAcomp(); renderComentarios(); renderEvolucao(); renderCidades(); renderHoje(); renderFoot(); icons();
+  renderCenarios(); renderPlano(); renderCascata(); renderHeat(); renderMult(); renderAcomp(); renderComentarios(); renderEvolucao(); renderCidades(); renderAtivacao(); renderHoje(); renderFoot(); icons();
 }
 
 function renderAlert(){
@@ -1148,12 +1172,12 @@ function renderHero(pz){
 
 function renderVTabs(fora, pz){
   const ganh = pz ? [pz.canal, ...pz.linhas].filter((g)=>g.est.k==='win').length : 0;
-  const tabs = [['plano','list-checks','Plano do dia', fora], ['evol','chart-line','Evolução', null], ['cid','map-pin','Cidades', null], ['coment','message-square-text','Comentários e focos', null], ['premio','trophy','Premiação', null], ['sim','sliders-horizontal','Simulações', null]];
+  const tabs = [['plano','list-checks','Plano do dia', fora], ['evol','chart-line','Evolução', null], ['cid','map-pin','Cidades', null], ['ativ','megaphone','Ativação', null], ['coment','message-square-text','Comentários e focos', null], ['premio','trophy','Premiação', null], ['sim','sliders-horizontal','Simulações', null]];
   $('vtabs').innerHTML = tabs.map(([k,ic,l,c]) => `<button type="button" class="tab${S.view===k?' on':''}" data-v="${k}" aria-pressed="${S.view===k}"><i data-lucide="${ic}"></i>${l}${c?`<span class="cnt">${c}</span>`:''}</button>`).join('');
   $('vtabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; S.view = b.dataset.v; salvar(); showView(); renderVTabs(fora, pz); icons(); };
   showView();
 }
-function showView(){ $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
+function showView(){ $('vAtiv').hidden = S.view!=='ativ'; $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
 function icons(){ try { if (window.lucide) window.lucide.createIcons(); } catch(e){} }
 
 // ================= premiação e ranking de gerentes
@@ -1725,6 +1749,163 @@ function renderCidades(){
     }</tbody></table></div>
     <p class="sub" style="margin-top:10px">Receberam = revendedores ativos no ciclo ${esc((D.ciclo||{}).ciclo||'')} (I, R, A0) · Responderam = com resposta do CSAT no ciclo. Detalhe por revendedor na página <a href="ativacao.html">Ativação CSAT</a>.</p>
   </section>`;
+}
+
+// ================= aba Ativação CSAT (revendedores; dados criptografados no site)
+const AT = { dados:{}, erro:{}, abrindo:{} };
+const lsA = { get(k, d){ try { const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); } catch(e){ return d; } },
+              set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+              del(k){ try { localStorage.removeItem(k); } catch(e){} } };
+const AT_SCRIPT_PADRAO = 'Olá, {nome}! Tudo bem? 😊\nAqui é da {er}. Neste ciclo você recebeu a pesquisa de satisfação do Grupo Boticário sobre o seu pedido.\nSua opinião é muito importante para melhorarmos o nosso atendimento, e leva menos de 1 minuto.\nVocê consegue responder hoje? Obrigado! 💚';
+let AT_SCRIPT = lsA.get('csat_ativ_script', AT_SCRIPT_PADRAO);
+let AT_CONT = lsA.get('csat_ativ_contatos', {});
+const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function abrirPacote(pk, senha, iter){
+  if (!window.crypto || !crypto.subtle) throw new Error('sem-crypto');
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveKey']);
+  for (const e of pk.k){
+    try {
+      const k = await crypto.subtle.deriveKey({ name:'PBKDF2', salt:b64d(e.s), iterations:iter, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['decrypt']);
+      const raw = await crypto.subtle.decrypt({ name:'AES-GCM', iv:b64d(e.i) }, k, b64d(e.c));
+      const dk = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+      const gz = await crypto.subtle.decrypt({ name:'AES-GCM', iv:b64d(pk.i) }, dk, b64d(pk.c));
+      const txt = await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+      return JSON.parse(txt);
+    } catch(err) { /* senha não abre este envelope: tenta o próximo */ }
+  }
+  return null;
+}
+function ativDados(pr){
+  if (window.ATIVACAO) { const ers = Object.keys(CFG.pracas[pr].unidades); const A = window.ATIVACAO;
+    return Object.assign({}, A, { revendedores: A.revendedores.filter((r)=>ers.includes(String(r[1]))) }); }
+  return AT.dados[pr] || null;
+}
+async function ativDesbloquear(pr, senha, lembrar){
+  const C = window.ATIV_CRIPTO;
+  if (!C || !C.pracas[pr]) { AT.erro[pr] = 'Dados da ativação não encontrados.'; return false; }
+  AT.abrindo[pr] = true; renderAtivacao();
+  try {
+    const d = await abrirPacote(C.pracas[pr], senha, C.iter);
+    if (!d) { AT.erro[pr] = 'Senha incorreta.'; lsA.del('csat_ativ_senha_' + pr); return false; }
+    AT.dados[pr] = d; AT.erro[pr] = '';
+    if (lembrar) lsA.set('csat_ativ_senha_' + pr, senha);
+    return true;
+  } catch(e) { AT.erro[pr] = e.message === 'sem-crypto' ? 'Este navegador não permite abrir os dados aqui. Use o site publicado (https) ou abra pela pasta com o ativacao.js.' : 'Não foi possível abrir os dados.'; return false; }
+  finally { AT.abrindo[pr] = false; renderAtivacao(); icons(); }
+}
+
+function renderAtivacao(){
+  const el = $('vAtiv'); if (!el) return;
+  const pr = S.praca, nomePr = CFG.pracas[pr].nome;
+  let A = ativDados(pr);
+  if (!A) {
+    const salva = lsA.get('csat_ativ_senha_' + pr, null);
+    if (salva && !AT.abrindo[pr] && AT.erro[pr] == null) { ativDesbloquear(pr, salva, true); }
+    const semDados = !window.ATIV_CRIPTO;
+    el.innerHTML = `<section class="card aviso-at"><span class="icchip t-warning"><i data-lucide="lock"></i></span><div style="flex:1">
+      <h2>Ativação CSAT · ${esc(nomePr)}</h2>
+      <p class="sub" style="margin:6px 0 12px">${semDados ? 'Os dados da ativação ainda não foram gerados. Rode <code>python atualizar_dados.py</code>.' : 'Esta área tem nomes e telefones de revendedores. Digite a senha da praça para abrir.'}</p>
+      ${semDados ? '' : `<form id="atForm" class="atform"><input type="password" id="atSenha" placeholder="Senha de ${esc(nomePr)}" autocomplete="current-password" required>
+        <label class="chk"><input type="checkbox" id="atLembrar" checked> Lembrar neste navegador</label>
+        <button class="btn" type="submit"${AT.abrindo[pr]?' disabled':''}><i data-lucide="unlock"></i>${AT.abrindo[pr]?'Abrindo…':'Abrir'}</button></form>
+        ${AT.erro[pr] ? `<p class="c-bad" style="margin-top:8px;font-weight:700">${esc(AT.erro[pr])}</p>` : ''}`}
+    </div></section>`;
+    const f = $('atForm');
+    if (f) f.onsubmit = (e) => { e.preventDefault(); AT.erro[pr] = null; ativDesbloquear(pr, $('atSenha').value, $('atLembrar').checked); };
+    return;
+  }
+
+  const CID = D.cidades || [];
+  const R0 = A.revendedores.map((r) => ({ cod:r[0], er:String(r[1]), nome:r[2], cid:CID[r[3]] || '', atv:r[4], fone:r[5], dia:r[6], nota:r[7] }));
+  const ers = [...new Set(R0.map((r)=>r.er))].filter((c)=>!S.gvo || infoU(c).gvo === S.gvo).filter((c)=>!S.loja || c === S.loja)
+    .sort((a,b)=>nomeU(a).localeCompare(nomeU(b)));
+  if (S.aEr && !ers.includes(S.aEr)) S.aEr = '';
+  const base = R0.filter((r)=>ers.includes(r.er) && (!S.aEr || r.er === S.aEr));
+  const cids = [...new Set(base.map((r)=>r.cid).filter(Boolean))].sort();
+  if (S.aCid && !cids.includes(S.aCid)) S.aCid = '';
+  const b2 = base.filter((r)=>(!S.aCid || r.cid === S.aCid) && (!S.aAtv || r.atv === S.aAtv));
+  const q = (S.aQ || '').trim().toLowerCase();
+  const lst = b2.filter((r)=>(S.aStatus==='todos' || (S.aStatus==='pend' ? !r.dia : !!r.dia)) && (!S.aFone || r.fone || S.aStatus==='resp')
+    && (!q || r.nome.toLowerCase().includes(q) || r.cod.includes(q)));
+  const resp = b2.filter((r)=>r.dia).length, pend = b2.length - resp, pendFone = b2.filter((r)=>!r.dia && r.fone).length;
+  const cont = b2.filter((r)=>!r.dia && AT_CONT[r.cod]).length;
+  const porER = ers.filter((c)=>!S.aEr || c===S.aEr).map((c) => { const rs = R0.filter((r)=>r.er===c && (!S.aCid || r.cid===S.aCid) && (!S.aAtv || r.atv===S.aAtv)); const rr = rs.filter((r)=>r.dia).length;
+    return { c, n:rs.length, rr, pend:rs.length-rr, fone:rs.filter((r)=>!r.dia && r.fone).length, cont:rs.filter((r)=>!r.dia && AT_CONT[r.cod]).length }; });
+  const primeiro = (n) => { const p = String(n||'').trim().split(/\s+/)[0] || ''; return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase(); };
+  const msg = (r) => AT_SCRIPT.replace(/\{nome\}/g, primeiro(r.nome)).replace(/\{er\}/g, nomeU(r.er)).replace(/\{ciclo\}/g, String(A.ciclo).slice(4));
+  const link = (r) => `https://web.whatsapp.com/send?phone=${r.fone}&text=${encodeURIComponent(msg(r))}`;
+  const fmtFone = (f) => f ? `(${f.slice(2,4)}) ${f.slice(4,9)}-${f.slice(9)}` : '';
+  const PG = 50, pags = Math.max(1, Math.ceil(lst.length/PG)); S.aPag = Math.min(S.aPag || 0, pags-1);
+  const ord = lst.slice().sort((a,b)=>(!!a.dia - !!b.dia) || (!!AT_CONT[a.cod] - !!AT_CONT[b.cod]) || a.nome.localeCompare(b.nome));
+  const pagina = ord.slice(S.aPag*PG, S.aPag*PG + PG);
+  const seg = (k, items) => `<div class="ptabs" data-ak="${k}">${items.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${S[k]===v}">${l}</button>`).join('')}</div>`;
+  const bar = (v) => `<div class="hb2" style="max-width:140px"><i class="${v>=0.5?'ok':v>=0.2?'warn':''}" style="width:${Math.min(100,v*100)}%"></i></div>`;
+  const taxa = resp/Math.max(1,b2.length);
+
+  el.innerHTML = `
+  <section class="card">
+    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="megaphone"></i></span><div><h2>Ativação CSAT · ${esc(nomePr)}</h2><p>Ciclo ${esc(String(A.ciclo).slice(4))}/${esc(String(A.ciclo).slice(0,4))} · todo revendedor ativo (I, R, A0) recebe a pesquisa após o 1º pedido do ciclo</p></div></div>
+      ${window.ATIVACAO ? '' : `<button class="btn ghost sm" type="button" id="atSair"><i data-lucide="lock"></i>Bloquear</button>`}</div>
+    <div class="hstrip">
+      <div><span class="l">Receberam a pesquisa</span><b>${fI(b2.length)}</b><span class="l">ativos no ciclo</span></div>
+      <div><span class="l">Responderam</span><b class="c-ok">${fI(resp)}</b><div class="hb2"><i class="${taxa>=0.2?'ok':'bad'}" style="width:${Math.min(100,taxa*100)}%"></i></div><span class="l">${fP(taxa,1)} de resposta</span></div>
+      <div><span class="l">Não responderam</span><b class="c-bad">${fI(pend)}</b><span class="l">${fI(pendFone)} com telefone</span></div>
+      <div><span class="l">Contatados</span><b>${fI(cont)}</b><span class="l">neste navegador</span></div>
+    </div>
+    <div class="filter at-f" style="padding:0"><div class="row">
+      <div class="fld"><label for="aEr">ER</label><select id="aEr"><option value="">Todas</option>${ers.map((c)=>`<option value="${c}"${c===S.aEr?' selected':''}>${esc(nomeU(c))}</option>`).join('')}</select></div>
+      <div class="fld"><label for="aCid">Cidade</label><select id="aCid"><option value="">Todas</option>${cids.map((c)=>`<option${c===S.aCid?' selected':''}>${esc(c)}</option>`).join('')}</select></div>
+      <div class="fld"><label>Situação</label>${seg('aStatus', [['pend','Não responderam'],['resp','Responderam'],['todos','Todos']])}</div>
+      <div class="fld"><label for="aAtv">Atividade</label><select id="aAtv"><option value="">I, R e A0</option>${['A0','I','R'].map((a)=>`<option${a===S.aAtv?' selected':''}>${a}</option>`).join('')}</select></div>
+      <div class="fld"><label for="aQ">Buscar</label><input type="search" id="aQ" placeholder="Nome ou código" value="${esc(S.aQ||'')}"></div>
+      <label class="chk"><input type="checkbox" id="aFone"${S.aFone?' checked':''}> Só com telefone</label>
+    </div></div>
+  </section>
+
+  <section class="card">
+    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="store"></i></span><h2>Por ER</h2></div></div>
+    <div class="tw"><table><thead><tr><th>ER</th><th class="n">Receberam</th><th class="n">Responderam</th><th>Taxa de resposta</th><th class="n">Não responderam</th><th class="n">Com telefone</th><th class="n">Contatados</th></tr></thead><tbody>${
+      porER.map((o)=>`<tr><td><b>${esc(nomeU(o.c))}</b></td><td class="n">${fI(o.n)}</td><td class="n">${fI(o.rr)}</td><td><div class="minib">${bar(o.rr/Math.max(1,o.n))}<b>${fP(o.rr/Math.max(1,o.n),1)}</b></div></td><td class="n">${fI(o.pend)}</td><td class="n">${fI(o.fone)}</td><td class="n">${fI(o.cont)}</td></tr>`).join('')}
+    </tbody></table></div>
+  </section>
+
+  <section class="card scr">
+    <div class="card-hd"><div class="hl"><span class="icchip t-primary"><i data-lucide="message-square-text"></i></span><div><h2>Mensagem do WhatsApp</h2><p>Editável; fica salva neste navegador</p></div></div>
+      <button class="btn ghost sm" type="button" id="atPadrao"><i data-lucide="rotate-ccw"></i>Texto padrão</button></div>
+    <textarea id="atScript" aria-label="Texto da mensagem">${esc(AT_SCRIPT)}</textarea>
+    <div class="ph">Use <code>{nome}</code> para o primeiro nome do revendedor e <code>{er}</code> para o nome da ER.</div>
+    ${pagina[0] ? `<div class="prev" id="atPrev">${esc(msg(pagina[0]))}</div>` : ''}
+  </section>
+
+  <section class="card">
+    <div class="card-hd"><div class="hl"><span class="icchip t-destructive"><i data-lucide="users"></i></span><div><h2>Revendedores</h2><p>${fI(lst.length)} na lista · pendentes não contatados primeiro</p></div></div></div>
+    <div class="tw"><table class="lst"><thead><tr><th>Revendedor</th><th>Código</th><th>ER</th><th>Cidade</th><th>Ativ.</th><th>Situação</th><th>Telefone</th><th></th></tr></thead><tbody>${
+      pagina.map((r)=>`<tr><td class="nm"><b>${esc(r.nome)}</b></td><td class="tnum">${esc(r.cod)}</td><td>${esc(nomeU(r.er))}</td><td>${esc(r.cid)}</td><td>${esc(r.atv)}</td>
+        <td>${r.dia ? `<span class="st-ok">✓ Respondeu ${fD(r.dia)}</span>${r.nota?` <span class="muted">nota ${r.nota}</span>`:''}` : `<span class="st-pend">● Pendente</span>${AT_CONT[r.cod]?` <span class="muted">contatado ${esc(AT_CONT[r.cod])}</span>`:''}`}</td>
+        <td class="tnum">${r.fone ? fmtFone(r.fone) : '<span class="muted">sem telefone</span>'}</td>
+        <td>${r.fone && !r.dia ? `<a class="wa${AT_CONT[r.cod]?' feito':''}" href="${link(r)}" target="whatsapp" rel="noopener" data-c="${esc(r.cod)}"><i data-lucide="message-circle"></i>${AT_CONT[r.cod]?'Enviar de novo':'WhatsApp'}</a>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="sub">Ninguém neste filtro.</td></tr>'}
+    </tbody></table></div>
+    <div class="pager">${pags>1?`<button class="btn ghost sm" type="button" id="atAnt"${S.aPag===0?' disabled':''}>‹ Anterior</button><span>Página ${S.aPag+1} de ${pags}</span><button class="btn ghost sm" type="button" id="atProx"${S.aPag>=pags-1?' disabled':''}>Próxima ›</button>`:''}</div>
+    <p class="sub" style="margin-top:8px">Respostas do survey até ${fD(D.parcial ? D.parcial.dia : D.corte)}${D.parcial?' '+esc(D.parcial.ate):''} · telefones: ${esc(A.fonte_fone||'')}.</p>
+  </section>`;
+
+  const re = () => { renderAtivacao(); icons(); };
+  el.querySelectorAll('.ptabs[data-ak]').forEach((g) => g.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; S[g.dataset.ak] = b.dataset.v; S.aPag = 0; re(); });
+  $('aEr').onchange = (e) => { S.aEr = e.target.value; S.aPag = 0; re(); };
+  $('aCid').onchange = (e) => { S.aCid = e.target.value; S.aPag = 0; re(); };
+  $('aAtv').onchange = (e) => { S.aAtv = e.target.value; S.aPag = 0; re(); };
+  $('aFone').onchange = (e) => { S.aFone = e.target.checked; S.aPag = 0; re(); };
+  let tq; $('aQ').oninput = (e) => { clearTimeout(tq); tq = setTimeout(() => { S.aQ = e.target.value; S.aPag = 0; const pos = e.target.selectionStart; re(); const f = $('aQ'); f.focus(); f.setSelectionRange(pos, pos); }, 250); };
+  $('atScript').oninput = (e) => { AT_SCRIPT = e.target.value; lsA.set('csat_ativ_script', AT_SCRIPT); const pv = $('atPrev'); if (pv && pagina[0]) pv.textContent = msg(pagina[0]);
+    el.querySelectorAll('a.wa').forEach((a) => { const r = R0.find((x)=>x.cod===a.dataset.c); if (r) a.href = link(r); }); };
+  $('atPadrao').onclick = () => { AT_SCRIPT = AT_SCRIPT_PADRAO; lsA.set('csat_ativ_script', AT_SCRIPT); re(); };
+  const sair = $('atSair'); if (sair) sair.onclick = () => { lsA.del('csat_ativ_senha_' + pr); delete AT.dados[pr]; AT.erro[pr] = ''; re(); };
+  el.querySelectorAll('a.wa').forEach((a) => a.addEventListener('click', () => {
+    const d = new Date(); AT_CONT[a.dataset.c] = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    lsA.set('csat_ativ_contatos', AT_CONT); setTimeout(() => { re(); toast('Marcado como contatado'); }, 300); }));
+  const pa = $('atAnt'), pp = $('atProx');
+  if (pa) pa.onclick = () => { S.aPag--; re(); window.scrollTo({ top: $('vAtiv').offsetTop - 10, behavior:'smooth' }); };
+  if (pp) pp.onclick = () => { S.aPag++; re(); window.scrollTo({ top: $('vAtiv').offsetTop - 10, behavior:'smooth' }); };
 }
 
 function resumoZap(){
