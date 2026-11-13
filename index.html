@@ -2100,7 +2100,7 @@ function renderAtivacao(){
   if (pp) pp.onclick = () => { S.aPag++; re(); window.scrollTo({ top: $('vAtiv').offsetTop - 10, behavior:'smooth' }); };
 }
 
-// ================= Uso: quem está acessando o painel (aba "acessos" da planilha do PULSAR, pagina = csat)
+// ================= Uso: quem está acessando o painel (aba "acessos_csat" da planilha do PULSAR)
 const ABAS_CSAT = { plano:'Plano do dia', evol:'Evolução', cid:'Cidades', ativ:'Ativação', coment:'Comentários e focos', premio:'Premiação', sim:'Simulações', uso:'Uso' };
 let USO = { mes:null, dados:null, em:0, erro:'' };
 async function carregarUso(force){
@@ -2118,7 +2118,7 @@ function renderUso(){
   const el = $('vUso'); if (!el) return;
   if (!USO.dados && !USO.erro) { el.innerHTML = '<section class="card"><p class="sub">Carregando os acessos…</p></section>'; carregarUso().then(() => { if (S.view === 'uso') { renderUso(); icons(); } }); return; }
   if (!USO.dados) {
-    el.innerHTML = `<section class="card"><h2>Os acessos ainda não estão disponíveis</h2><p class="sub" style="margin-top:6px">${USO.erro==='script' ? 'O Apps Script da planilha ainda é a versão antiga.' : USO.erro==='rede' ? 'Não foi possível ler a planilha agora. Tente de novo em instantes.' : 'O registro de uso não foi carregado.'}</p><button class="btn ghost sm" type="button" id="usoTentar"><i data-lucide="refresh-ccw"></i>Tentar de novo</button></section>`;
+    el.innerHTML = `<section class="card"><h2>Os acessos ainda não estão disponíveis</h2><p class="sub" style="margin-top:6px">${USO.erro==='script' ? 'O Apps Script da planilha ainda é a versão antiga: falta a aba acessos_csat (veja o PASSO_A_PASSO do PULSAR).' : USO.erro==='rede' ? 'Não foi possível ler a planilha agora. Tente de novo em instantes.' : 'O registro de uso não foi carregado.'}</p><button class="btn ghost sm" type="button" id="usoTentar"><i data-lucide="refresh-ccw"></i>Tentar de novo</button></section>`;
     const b = $('usoTentar'); if (b) b.onclick = () => { USO.dados = null; USO.erro = ''; renderUso(); };
     return;
   }

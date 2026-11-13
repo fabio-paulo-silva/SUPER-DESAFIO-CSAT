@@ -1,5 +1,5 @@
 /* SUPER DESAFIO CSAT - identificação de quem acessa e registro de uso (copiado do PULSAR COMERCIAL).
- * Grava na mesma aba "acessos" da planilha do PULSAR, com pagina = "csat".
+ * Grava na aba "acessos_csat" da planilha do PULSAR (separada da aba "acessos" do PULSAR).
  *
  * Na primeira visita a pessoa escolhe o nome (GVO, GCVO/GPVO ou GRVO do cadastro de lojas, ou outro nome).
  * A escolha fica neste navegador. A cada página, aba ou filtro aberto, grava um acesso na aba "acessos" da
@@ -105,13 +105,13 @@
     ult[chave] = agora; gravar(KEY_ULT, ult);
     if (local) return;
     const acesso = Object.assign({ nome: u.nome, papel: u.papel, dispositivo: dispositivo(), ambiente: cfg.ambiente }, t);
-    fetch(cfg.planilha.url, { method: 'POST', keepalive: true, body: JSON.stringify({ chave: cfg.planilha.chave, op: 'acesso', acesso }) }).catch(() => {});
+    fetch(cfg.planilha.url, { method: 'POST', keepalive: true, body: JSON.stringify({ chave: cfg.planilha.chave, op: 'acesso_csat', acesso }) }).catch(() => {});
   }
 
   // Lê os acessos do mês (aba Uso). Se o Apps Script ainda for a versão antiga, devolve null.
   async function acessos(mes) {
     if (!cfg.planilha || !cfg.planilha.url) return null;
-    const r = await fetch(`${cfg.planilha.url}?chave=${encodeURIComponent(cfg.planilha.chave)}&tipo=acessos&mes=${mes}`, { cache: 'no-store' }).then(x => x.json());
+    const r = await fetch(`${cfg.planilha.url}?chave=${encodeURIComponent(cfg.planilha.chave)}&tipo=acessos_csat&mes=${mes}`, { cache: 'no-store' }).then(x => x.json());
     return r && r.ok && Array.isArray(r.acessos) ? r.acessos : null;
   }
 
