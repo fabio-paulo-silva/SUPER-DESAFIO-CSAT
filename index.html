@@ -307,6 +307,8 @@ h3.rk{font-size:14px;margin:14px 0 8px;color:var(--ink-2);font-weight:600}
 #vAtiv .ptabs{flex-wrap:wrap;max-width:100%}
 #vAtiv .card-hd>.ptabs{margin-top:4px}
 .cnt2{border-radius:999px;padding:0 7px;font-size:11px;font-weight:800;background:var(--surface);color:var(--ink-2);margin-left:4px}
+.at-hd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+.at-hd .delta svg{width:13px;height:13px}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:9px;font-size:14px;display:none;z-index:60}
 .chip{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 5px;margin-left:4px;font-weight:500}
 @media (max-width:640px){
@@ -623,6 +625,7 @@ details.card>summary{margin:0}
 
 <script src="dados.js"></script>
 <script src="motor.js"></script>
+<script src="planilha.js" onerror="window.CSAT_PLANILHA=null"></script>
 <script src="ativacao_cripto.js" onerror="window.ATIV_CRIPTO=null"></script>
 <script>if (location.protocol === "file:") document.write('<script src="ativacao.js" onerror="window.ATIVACAO=null"><\/script>');</script>
 <script>
@@ -1183,7 +1186,7 @@ function renderVTabs(fora, pz){
   $('vtabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; S.view = b.dataset.v; salvar(); showView(); renderVTabs(fora, pz); icons(); };
   showView();
 }
-function showView(){ $('vAtiv').hidden = S.view!=='ativ'; $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
+function showView(){ if (S.view === 'ativ' && typeof carregarAcionamentos === 'function' && AT_SYNC.quando && (Date.now() - Date.parse(AT_SYNC.quando)) > 60000) carregarAcionamentos(); $('vAtiv').hidden = S.view!=='ativ'; $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
 function icons(){ try { if (window.lucide) window.lucide.createIcons(); } catch(e){} }
 
 // ================= premiação e ranking de gerentes
@@ -1764,17 +1767,99 @@ const lsA = { get(k, d){ try { const v = localStorage.getItem(k); return v==null
               del(k){ try { localStorage.removeItem(k); } catch(e){} } };
 const AT_SCRIPT_PADRAO = 'Olá, {nome}! Tudo bem? 😊\nAqui é da {er}. Neste ciclo você recebeu a pesquisa de satisfação do Grupo Boticário sobre o seu pedido.\nSua opinião é muito importante para melhorarmos o nosso atendimento, e leva menos de 1 minuto.\nVocê consegue responder hoje? Obrigado! 💚';
 let AT_SCRIPT = lsA.get('csat_ativ_script', AT_SCRIPT_PADRAO);
-let AT_CONT = lsA.get('csat_ativ_contatos', {});
-(function migrar(){ const ano = new Date().getFullYear(); let mudou = false;
-  for (const [k, v] of Object.entries(AT_CONT)) if (typeof v === 'string') {
-    const m = v.match(/^(\d{2})\/(\d{2})(?: (\d{2}):(\d{2}))?/); const iso = m ? `${ano}-${m[2]}-${m[1]}T${m[3]||'00'}:${m[4]||'00'}` : new Date().toISOString().slice(0,16);
-    AT_CONT[k] = { p: iso, u: iso, n: 1 }; mudou = true; }
-  if (mudou) lsA.set('csat_ativ_contatos', AT_CONT); })();
+// ---- acionamentos compartilhados: planilha do PULSAR (aba acionamentos_csat) + fila local para quando estiver sem internet
+const PL = window.CSAT_PLANILHA || null;
+let AT_EVT = lsA.get('csat_ativ_eventos', []);   // cópia local do que veio da planilha
+let AT_FILA = lsA.get('csat_ativ_fila', []);     // marcações ainda não enviadas
+let AT_AUTOR = lsA.get('csat_ativ_autor', '');
+const AT_SYNC = { estado: PL ? 'conectando' : 'local', quando: '', erro: '' };
+const cicloAtiv = () => String((window.ATIVACAO && window.ATIVACAO.ciclo) || (D.ciclo && D.ciclo.ciclo) || '');
 const agoraISO = () => { const d = new Date(), z = (n) => String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
+const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+let AT_CONT = {};
+function recalcContatos(){
+  const evs = AT_EVT.concat(AT_FILA).filter((e)=>!e.ciclo || String(e.ciclo) === cicloAtiv())
+    .sort((a,b) => (a.quando||'') < (b.quando||'') ? -1 : (a.quando||'') > (b.quando||'') ? 1 : 0);
+  const vistos = new Set(), c = {};
+  for (const e of evs){
+    if (vistos.has(e.id)) continue; vistos.add(e.id);
+    const k = String(e.revendedor);
+    if (e.acao === 'desmarcar') { delete c[k]; continue; }
+    c[k] = c[k] ? { p:c[k].p, u:e.quando, n:c[k].n + 1, a:e.autor || c[k].a, o:e.origem } : { p:e.quando, u:e.quando, n:1, a:e.autor || '', o:e.origem };
+  }
+  AT_CONT = c;
+}
+// marcações antigas (só deste navegador) entram na fila uma única vez
+(function migrar(){
+  if (lsA.get('csat_ativ_migrado', false)) return;
+  const antigo = lsA.get('csat_ativ_contatos', {}), ano = new Date().getFullYear();
+  for (const [k, v] of Object.entries(antigo)) {
+    let iso = typeof v === 'object' && v ? v.u || v.p : null;
+    if (typeof v === 'string') { const m = v.match(/^(\d{2})\/(\d{2})(?: (\d{2}):(\d{2}))?/); iso = m ? `${ano}-${m[2]}-${m[1]}T${m[3]||'00'}:${m[4]||'00'}` : null; }
+    AT_FILA.push({ id: novoId(), quando: iso || agoraISO(), ciclo: cicloAtiv(), praca: '', er: '', revendedor: k, autor: AT_AUTOR || '', origem: 'migrado', acao: 'marcar' });
+  }
+  lsA.set('csat_ativ_fila', AT_FILA); lsA.set('csat_ativ_migrado', true);
+})();
+recalcContatos();
 const contato = (cod) => AT_CONT[cod] || null;
-function marcarContato(cod){ const c = AT_CONT[cod], t = agoraISO(); AT_CONT[cod] = c ? { p: c.p, u: t, n: (c.n||1) + 1 } : { p: t, u: t, n: 1 }; lsA.set('csat_ativ_contatos', AT_CONT); }
-function desmarcarContato(cod){ delete AT_CONT[cod]; lsA.set('csat_ativ_contatos', AT_CONT); }
 const fDH = (iso) => iso ? `${iso.slice(8,10)}/${iso.slice(5,7)} ${iso.slice(11,16)}` : '—';
+function pedirAutor(){
+  if (AT_AUTOR) return true;
+  const n = (prompt('Seu nome (aparece para a equipe como quem acionou o revendedor):') || '').trim();
+  if (!n) return false;
+  AT_AUTOR = n.slice(0, 60); lsA.set('csat_ativ_autor', AT_AUTOR); return true;
+}
+function registrar(cod, acao, origem){
+  if (!pedirAutor()) return false;
+  AT_FILA.push({ id: novoId(), quando: agoraISO(), ciclo: cicloAtiv(), praca: S.praca, er: (AT._er && AT._er[cod]) || '', revendedor: String(cod), autor: AT_AUTOR, origem, acao });
+  lsA.set('csat_ativ_fila', AT_FILA); recalcContatos(); enviarFila(); return true;
+}
+const marcarContato = (cod, origem) => registrar(cod, 'marcar', origem || 'caixa');
+const desmarcarContato = (cod) => registrar(cod, 'desmarcar', 'caixa');
+const postPL = (corpo) => fetch(PL.url, { method:'POST', body: JSON.stringify(Object.assign({ chave: PL.chave }, corpo)) }).then((r)=>r.json());
+let _enviando = false;
+async function enviarFila(){
+  if (!PL || _enviando || !AT_FILA.length) { atualizarSync(); return; }
+  _enviando = true;
+  try {
+    while (AT_FILA.length){
+      const e = AT_FILA[0];
+      let j; try { j = await postPL({ op:'acionamento', acionamento: e }); } catch(err) { AT_SYNC.estado = 'offline'; break; }
+      if (!j.ok) { AT_SYNC.estado = j.erro === 'chave inválida' ? 'chave' : 'script'; AT_SYNC.erro = j.erro || ''; break; }
+      AT_FILA.shift(); AT_EVT.push(e); lsA.set('csat_ativ_fila', AT_FILA); lsA.set('csat_ativ_eventos', AT_EVT);
+      AT_SYNC.estado = 'ok';
+    }
+  } finally { _enviando = false; atualizarSync(); }
+}
+async function carregarAcionamentos(){
+  if (!PL) return;
+  try {
+    const j = await fetch(`${PL.url}?chave=${encodeURIComponent(PL.chave)}&tipo=acionamentos&ciclo=${encodeURIComponent(cicloAtiv())}`, { cache:'no-store' }).then((r)=>r.json());
+    if (!j.ok) { AT_SYNC.estado = j.erro === 'chave inválida' ? 'chave' : 'script'; }
+    else if (!Array.isArray(j.acionamentos)) { AT_SYNC.estado = 'script'; }
+    else {
+      const daFila = new Set(AT_FILA.map((e)=>e.id));
+      AT_EVT = j.acionamentos.filter((e)=>!daFila.has(e.id)); lsA.set('csat_ativ_eventos', AT_EVT);
+      AT_SYNC.estado = 'ok'; AT_SYNC.quando = agoraISO();
+    }
+  } catch(err) { AT_SYNC.estado = 'offline'; }
+  recalcContatos();
+  await enviarFila();
+  if (S.view === 'ativ') { renderAtivacao(); icons(); }
+}
+function atualizarSync(){ const el = document.getElementById('atSync'); if (el) el.outerHTML = syncChip(); }
+function syncChip(){
+  const n = AT_FILA.length, e = AT_SYNC.estado;
+  const [cls, txt] = !PL ? ['flat', 'Só neste navegador'] :
+    e === 'ok' && !n ? ['up', `Planilha conectada${AT_SYNC.quando ? ' · ' + AT_SYNC.quando.slice(11,16) : ''}`] :
+    e === 'script' ? ['mid', `Atualize o Apps Script do PULSAR${n ? ' · ' + n + ' para enviar' : ''}`] :
+    e === 'chave' ? ['down', 'Chave da planilha recusada'] :
+    e === 'offline' ? ['mid', `Sem conexão com a planilha${n ? ' · ' + n + ' para enviar' : ''}`] :
+    n ? ['mid', `${n} para enviar`] : ['flat', 'Conectando à planilha…'];
+  return `<span class="delta ${cls}" id="atSync" title="Marcações de contato compartilhadas pela equipe"><i data-lucide="sheet"></i>${esc(txt)}</span>`;
+}
+if (PL) { setTimeout(carregarAcionamentos, 400); setInterval(() => { if (S.view === 'ativ' && !document.hidden) carregarAcionamentos(); }, 180000); }
+
 const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 async function abrirPacote(pk, senha, iter){
   if (!window.crypto || !crypto.subtle) throw new Error('sem-crypto');
@@ -1833,6 +1918,7 @@ function renderAtivacao(){
 
   const CID = D.cidades || [];
   const R0 = A.revendedores.map((r) => ({ cod:r[0], er:String(r[1]), nome:r[2], cid:CID[r[3]] || '', atv:r[4], fone:r[5], dia:r[6], nota:r[7] }));
+  AT._er = Object.fromEntries(R0.map((r)=>[r.cod, r.er]));
   const ers = [...new Set(R0.map((r)=>r.er))].filter((c)=>!S.gvo || infoU(c).gvo === S.gvo).filter((c)=>!S.loja || c === S.loja)
     .sort((a,b)=>nomeU(a).localeCompare(nomeU(b)));
   if (S.aEr && !ers.includes(S.aEr)) S.aEr = '';
@@ -1884,7 +1970,7 @@ function renderAtivacao(){
       <div class="card-hd"><div class="hl"><span class="icchip t-destructive"><i data-lucide="users"></i></span><div><h2>Revendedores</h2><p>${fI(lst.length)} na lista · marque a caixa quando entrar em contato (o botão do WhatsApp já marca)</p></div></div>
         ${seg('aCont', [['todos','Todos'],['nao','Não contatados'],['sim','Contatados']])}</div>
       <div class="tw"><table class="lst"><thead><tr><th>Contatado</th><th>Revendedor</th><th>Código</th><th>ER</th><th>Cidade</th><th>Ativ.</th><th>Situação</th><th>Telefone</th><th></th></tr></thead><tbody>${
-        pagina.map((r)=>{ const c = ac(r); return `<tr${c?' class="ok-row"':''}><td class="cc">${chk(r)}${c?`<span class="muted"> ${fDH(c.u)}</span>`:''}</td><td class="nm"><b>${esc(r.nome)}</b></td><td class="tnum">${esc(r.cod)}</td><td>${esc(nomeU(r.er))}</td><td>${esc(r.cid)}</td><td>${esc(r.atv)}</td>
+        pagina.map((r)=>{ const c = ac(r); return `<tr${c?' class="ok-row"':''}><td class="cc">${chk(r)}${c?`<span class="muted"> ${fDH(c.u)}${c.a?' · '+esc(c.a):''}</span>`:''}</td><td class="nm"><b>${esc(r.nome)}</b></td><td class="tnum">${esc(r.cod)}</td><td>${esc(nomeU(r.er))}</td><td>${esc(r.cid)}</td><td>${esc(r.atv)}</td>
           <td>${r.dia ? `<span class="st-ok">✓ Respondeu ${fD(r.dia)}</span>${r.nota?` <span class="muted">nota ${r.nota}</span>`:''}` : '<span class="st-pend">● Pendente</span>'}</td>
           <td class="tnum">${r.fone ? fmtFone(r.fone) : '<span class="muted">sem telefone</span>'}</td>
           <td>${!r.dia ? waBtn(r, c ? 'Enviar de novo' : 'WhatsApp') : ''}</td></tr>`; }).join('') || '<tr><td colspan="9" class="sub">Ninguém neste filtro.</td></tr>'}
@@ -1911,16 +1997,16 @@ function renderAtivacao(){
         <div><span class="l">Sem resposta</span><b class="c-bad">${fI(acSemResp.length)}</b><span class="l">${diasMed==null?'—':'há '+f1(diasMed)+' dias em média'}</span></div>
         <div><span class="l">Sem resposta há 3+ dias</span><b class="${acSemResp.some((r)=>diasDesde(ac(r).u)>=3)?'c-bad':''}">${fI(acSemResp.filter((r)=>diasDesde(ac(r).u)>=3).length)}</b><span class="l">reacionar</span></div>
       </div>
-      <div class="tw"><table class="lst"><thead><tr><th>Contatado</th><th>Revendedor</th><th>ER</th><th>Telefone</th><th>1º contato</th><th>Último contato</th><th class="n">Contatos</th><th class="n">Dias sem resposta</th><th>Situação</th><th></th></tr></thead><tbody>${
+      <div class="tw"><table class="lst"><thead><tr><th>Contatado</th><th>Revendedor</th><th>ER</th><th>Telefone</th><th>Quem acionou</th><th>1º contato</th><th>Último contato</th><th class="n">Contatos</th><th class="n">Dias sem resposta</th><th>Situação</th><th></th></tr></thead><tbody>${
         pagina.map((r)=>{ const c = ac(r), d = diasDesde(c.u);
           const sit = r.dia ? (respAposContato(r) ? `<span class="st-ok">✓ Respondeu ${fD(r.dia)}</span> <span class="muted">${M.diffDays(c.p.slice(0,10), r.dia)} dia(s) após</span>` : `<span class="st-ok">✓ Já tinha respondido (${fD(r.dia)})</span>`) : `<span class="badge ${sev(d)}">${d===0?'hoje':d+' dia'+(d>1?'s':'')}</span>`;
-          return `<tr><td class="cc">${chk(r)}</td><td class="nm"><b>${esc(r.nome)}</b><div class="muted">${esc(r.cod)} · ${esc(r.cid)}</div></td><td>${esc(nomeU(r.er))}</td><td class="tnum">${r.fone?fmtFone(r.fone):'—'}</td>
+          return `<tr><td class="cc">${chk(r)}</td><td class="nm"><b>${esc(r.nome)}</b><div class="muted">${esc(r.cod)} · ${esc(r.cid)}</div></td><td>${esc(nomeU(r.er))}</td><td class="tnum">${r.fone?fmtFone(r.fone):'—'}</td><td>${esc(c.a||'—')}</td>
             <td class="tnum">${fDH(c.p)}</td><td class="tnum">${fDH(c.u)}</td><td class="n">${fI(c.n)}</td><td class="n">${r.dia?'—':fI(d)}</td><td>${sit}</td><td>${!r.dia ? waBtn(r, 'Reacionar') : ''}</td></tr>`; }).join('')
-        || `<tr><td colspan="10" class="sub">${acionados.length ? 'Ninguém nesta situação.' : 'Ninguém foi marcado como contatado ainda. Use a caixa "Contatado" ou o botão do WhatsApp na lista.'}</td></tr>`}
+        || `<tr><td colspan="11" class="sub">${acionados.length ? 'Ninguém nesta situação.' : 'Ninguém foi marcado como contatado ainda. Use a caixa "Contatado" ou o botão do WhatsApp na lista.'}</td></tr>`}
       </tbody></table></div>
       <div class="pager">${pags>1?`<button class="btn ghost sm" type="button" id="atAnt"${S.aPag===0?' disabled':''}>‹ Anterior</button><span>Página ${S.aPag+1} de ${pags}</span><button class="btn ghost sm" type="button" id="atProx"${S.aPag>=pags-1?' disabled':''}>Próxima ›</button>`:''}
         <button class="btn ghost sm" type="button" id="atCsv"><i data-lucide="download"></i>Baixar lista (CSV)</button></div>
-      <p class="sub" style="margin-top:8px">Os contatos ficam salvos neste navegador. Respostas do survey até ${fD(hojeISO)}${D.parcial?' '+esc(D.parcial.ate):''}: quem responder sai de "Sem resposta" na próxima atualização dos dados.</p>
+      <p class="sub" style="margin-top:8px">${PL ? 'Os contatos são compartilhados pela equipe (planilha do PULSAR, aba acionamentos_csat) e atualizam a cada 3 minutos.' : 'Os contatos ficam salvos neste navegador.'} Respostas do survey até ${fD(hojeISO)}${D.parcial?' '+esc(D.parcial.ate):''}: quem responder sai de "Sem resposta" na próxima atualização dos dados.</p>
     </section>`;
     AT._lstAc = ord;
   }
@@ -1928,7 +2014,7 @@ function renderAtivacao(){
   el.innerHTML = `
   <section class="card">
     <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="megaphone"></i></span><div><h2>Ativação CSAT · ${esc(nomePr)}</h2><p>Ciclo ${esc(String(A.ciclo).slice(4))}/${esc(String(A.ciclo).slice(0,4))} · todo revendedor ativo (I, R, A0) recebe a pesquisa após o 1º pedido do ciclo</p></div></div>
-      ${window.ATIVACAO ? '' : `<button class="btn ghost sm" type="button" id="atSair"><i data-lucide="lock"></i>Bloquear</button>`}</div>
+      <div class="at-hd">${syncChip()}<button class="btn ghost sm" type="button" id="atAutor" title="Nome que aparece em quem acionou"><i data-lucide="user"></i>${AT_AUTOR ? esc(AT_AUTOR) : 'Informar meu nome'}</button>${window.ATIVACAO ? '' : `<button class="btn ghost sm" type="button" id="atSair"><i data-lucide="lock"></i>Bloquear</button>`}</div></div>
     <div class="hstrip">
       <div><span class="l">Receberam a pesquisa</span><b>${fI(b2.length)}</b><span class="l">ativos no ciclo</span></div>
       <div><span class="l">Responderam</span><b class="c-ok">${fI(resp)}</b><div class="hb2"><i class="${taxa>=0.2?'ok':'bad'}" style="width:${Math.min(100,taxa*100)}%"></i></div><span class="l">${fP(taxa,1)} de resposta</span></div>
@@ -1965,11 +2051,12 @@ function renderAtivacao(){
     el.querySelectorAll('a.wa').forEach((a) => { const r = R0.find((x)=>x.cod===a.dataset.c); if (r) a.href = link(r); }); };
   const bP = $('atPadrao'); if (bP) bP.onclick = () => { AT_SCRIPT = AT_SCRIPT_PADRAO; lsA.set('csat_ativ_script', AT_SCRIPT); re(); };
   const sair = $('atSair'); if (sair) sair.onclick = () => { lsA.del('csat_ativ_senha_' + pr); delete AT.dados[pr]; AT.erro[pr] = ''; re(); };
-  el.querySelectorAll('.atchk').forEach((c) => c.onchange = () => { if (c.checked) marcarContato(c.dataset.c); else desmarcarContato(c.dataset.c); setTimeout(re, 150); });
-  el.querySelectorAll('a.wa').forEach((a) => a.addEventListener('click', () => { marcarContato(a.dataset.c); setTimeout(() => { re(); toast('Marcado como contatado'); }, 300); }));
+  el.querySelectorAll('.atchk').forEach((c) => c.onchange = () => { const ok = c.checked ? marcarContato(c.dataset.c, 'caixa') : desmarcarContato(c.dataset.c); if (!ok) c.checked = !c.checked; setTimeout(re, 150); });
+  el.querySelectorAll('a.wa').forEach((a) => a.addEventListener('click', () => { if (marcarContato(a.dataset.c, 'whatsapp')) setTimeout(() => { re(); toast('Marcado como contatado'); }, 300); }));
+  const bAu = $('atAutor'); if (bAu) bAu.onclick = () => { const n = (prompt('Seu nome (aparece para a equipe como quem acionou o revendedor):', AT_AUTOR) || '').trim(); if (n) { AT_AUTOR = n.slice(0,60); lsA.set('csat_ativ_autor', AT_AUTOR); re(); } };
   const csv = $('atCsv'); if (csv) csv.onclick = () => {
-    const linhas = [['Codigo','Revendedor','ER','Cidade','Telefone','Primeiro contato','Ultimo contato','Contatos','Dias sem resposta','Respondeu em']]
-      .concat((AT._lstAc||[]).map((r)=>{ const c = ac(r); return [r.cod, r.nome, nomeU(r.er), r.cid, r.fone||'', fDH(c.p), fDH(c.u), c.n, r.dia?'':diasDesde(c.u), r.dia||'']; }));
+    const linhas = [['Codigo','Revendedor','ER','Cidade','Telefone','Quem acionou','Primeiro contato','Ultimo contato','Contatos','Dias sem resposta','Respondeu em']]
+      .concat((AT._lstAc||[]).map((r)=>{ const c = ac(r); return [r.cod, r.nome, nomeU(r.er), r.cid, r.fone||'', c.a||'', fDH(c.p), fDH(c.u), c.n, r.dia?'':diasDesde(c.u), r.dia||'']; }));
     const txt = '﻿' + linhas.map((l)=>l.map((v)=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type:'text/csv;charset=utf-8' })); a.download = `acionados_${pr}_${new Date().toISOString().slice(0,10)}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
   };
