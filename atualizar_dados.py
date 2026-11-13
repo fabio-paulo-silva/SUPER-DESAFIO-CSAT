@@ -119,7 +119,7 @@ def ler_centros():
         return t.replace(" Da ", " da ").replace(" De ", " de ").replace(" Do ", " do ")
 
     return {str(int(r.cod)): {"nome": nome(r.loja),"canal": r.canal, "gvo": r.gvo,
-                              "gcvo": r.gcvo, "praca_dc": r.praca}
+                              "gcvo": r.gcvo, "grvo": r.grvo, "praca_dc": r.praca}
             for r in c.itertuples() if pd.notna(r.cod)}
 
 
@@ -217,6 +217,27 @@ def main():
             unidades[cod] = {k: info.get(k, "") for k in ("nome", "canal", "gvo", "gcvo")}
             unidades[cod]["praca"] = sigla
 
+    # pessoas que podem se identificar no painel (controle de acessos, igual ao PULSAR)
+    pessoas = {}
+    def _add(nome, papel, cod):
+        nome = str(nome or "").strip()
+        if not nome or nome.lower() == "nan":
+            return
+        pe = pessoas.setdefault(nome, {"nome": nome, "papeis": [], "lojas": []})
+        if papel not in pe["papeis"]:
+            pe["papeis"].append(papel)
+        if cod and cod not in pe["lojas"]:
+            pe["lojas"].append(cod)
+    for sigla, p in CONFIG["pracas"].items():
+        for cod, papel_u in p["unidades"].items():
+            if papel_u not in ("meta", "praca"):
+                continue
+            info = centros.get(cod, {})
+            _add(info.get("gvo"), "GVO", cod)
+            _add(info.get("gcvo"), "GCVO/GPVO", cod)
+            _add(info.get("grvo"), "GRVO", cod)
+        _add(CONFIG.get("incentivo", {}).get("gerente_canal", {}).get(sigla), "Gerente de Canal", "")
+
     ultimo = df["data"].max()
     # Se a base vai até HOJE, o dia de hoje está incompleto: o corte fica em ontem
     # (meta de hoje = dia de hoje) e o que já entrou hoje vai em "parcial".
@@ -238,6 +259,7 @@ def main():
         "cidades": [c for c, _ in sorted(cidade_idx.items(), key=lambda kv: kv[1])],
         "linhas_cidade": linhas_cidade,
         "ciclo": ciclo_pub,
+        "pessoas": sorted(pessoas.values(), key=lambda x: x["nome"]),
     }
     with open(os.path.join(PASTA, "dados.js"), "w", encoding="utf-8") as f:
         f.write("// Gerado por atualizar_dados.py - contagens agregadas + comentarios de notas 1-3 mascarados\n")

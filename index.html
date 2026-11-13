@@ -309,6 +309,15 @@ h3.rk{font-size:14px;margin:14px 0 8px;color:var(--ink-2);font-weight:600}
 .cnt2{border-radius:999px;padding:0 7px;font-size:11px;font-weight:800;background:var(--surface);color:var(--ink-2);margin-left:4px}
 .at-hd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
 .at-hd .delta svg{width:13px;height:13px}
+:root{--card:var(--surface);--foreground:var(--ink);--muted-fg:var(--ink-2)}
+#hUsuario{font:inherit}
+.btn.danger{color:var(--crit-ink)}
+.btn.danger:hover{background:oklch(0.58 0.21 22 / .1)}
+.lst td.acs{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.uso2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:20px}
+@media (max-width:900px){.uso2{grid-template-columns:minmax(0,1fr)}}
+.ut{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.ut>div:first-child{display:flex;justify-content:space-between;gap:8px;font-size:13px}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:9px;font-size:14px;display:none;z-index:60}
 .chip{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 5px;margin-left:4px;font-weight:500}
 @media (max-width:640px){
@@ -546,6 +555,8 @@ details.card>summary{margin:0}
 
   <div id="vAtiv" class="sec" hidden></div>
 
+  <div id="vUso" class="sec" hidden></div>
+
   <div id="vComent" class="sec" hidden></div>
 
   <div id="vPremio" class="sec" hidden><section class="card" id="premio"></section></div>
@@ -626,6 +637,7 @@ details.card>summary{margin:0}
 <script src="dados.js"></script>
 <script src="motor.js"></script>
 <script src="planilha.js" onerror="window.CSAT_PLANILHA=null"></script>
+<script src="uso.js"></script>
 <script src="ativacao_cripto.js" onerror="window.ATIV_CRIPTO=null"></script>
 <script>if (location.protocol === "file:") document.write('<script src="ativacao.js" onerror="window.ATIVACAO=null"><\/script>');</script>
 <script>
@@ -726,7 +738,7 @@ function render(){
   $('hMeta').textContent = `Meta ${fP(p.meta,0)}`;
   _cacheDia = {}; renderFiltros();
   const pz = renderPremio(); const hz = renderHero(pz); renderVTabs(hz.fora, pz);
-  renderCenarios(); renderPlano(); renderCascata(); renderHeat(); renderMult(); renderAcomp(); renderComentarios(); renderEvolucao(); renderCidades(); renderAtivacao(); renderHoje(); renderFoot(); icons();
+  renderCenarios(); renderPlano(); renderCascata(); renderHeat(); renderMult(); renderAcomp(); renderComentarios(); renderEvolucao(); renderCidades(); renderAtivacao(); renderHoje(); registrarUso(); renderFoot(); icons();
 }
 
 function renderAlert(){
@@ -1181,12 +1193,12 @@ function renderHero(pz){
 
 function renderVTabs(fora, pz){
   const ganh = pz ? [pz.canal, ...pz.linhas].filter((g)=>g.est.k==='win').length : 0;
-  const tabs = [['plano','list-checks','Plano do dia', fora], ['evol','chart-line','Evolução', null], ['cid','map-pin','Cidades', null], ['ativ','megaphone','Ativação', null], ['coment','message-square-text','Comentários e focos', null], ['premio','trophy','Premiação', null], ['sim','sliders-horizontal','Simulações', null]];
+  const tabs = [['plano','list-checks','Plano do dia', fora], ['evol','chart-line','Evolução', null], ['cid','map-pin','Cidades', null], ['ativ','megaphone','Ativação', null], ['coment','message-square-text','Comentários e focos', null], ['premio','trophy','Premiação', null], ['sim','sliders-horizontal','Simulações', null], ['uso','activity','Uso', null]];
   $('vtabs').innerHTML = tabs.map(([k,ic,l,c]) => `<button type="button" class="tab${S.view===k?' on':''}" data-v="${k}" aria-pressed="${S.view===k}"><i data-lucide="${ic}"></i>${l}${c?`<span class="cnt">${c}</span>`:''}</button>`).join('');
   $('vtabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; S.view = b.dataset.v; salvar(); showView(); renderVTabs(fora, pz); icons(); };
   showView();
 }
-function showView(){ if (S.view === 'ativ' && typeof carregarAcionamentos === 'function' && AT_SYNC.quando && (Date.now() - Date.parse(AT_SYNC.quando)) > 60000) carregarAcionamentos(); $('vAtiv').hidden = S.view!=='ativ'; $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
+function showView(){ $('vUso').hidden = S.view!=='uso'; if (S.view === 'uso') renderUso(); if (S.view === 'ativ' && typeof carregarAcionamentos === 'function' && AT_SYNC.quando && (Date.now() - Date.parse(AT_SYNC.quando)) > 60000) carregarAcionamentos(); $('vAtiv').hidden = S.view!=='ativ'; $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
 function icons(){ try { if (window.lucide) window.lucide.createIcons(); } catch(e){} }
 
 // ================= premiação e ranking de gerentes
@@ -1784,8 +1796,10 @@ function recalcContatos(){
   for (const e of evs){
     if (vistos.has(e.id)) continue; vistos.add(e.id);
     const k = String(e.revendedor);
+    if (k === '*') { for (const [rk, rv] of Object.entries(c)) if ((!e.praca || !rv.pr || rv.pr === e.praca) && (!e.er || rv.er === e.er)) delete c[rk]; continue; }
     if (e.acao === 'desmarcar') { delete c[k]; continue; }
-    c[k] = c[k] ? { p:c[k].p, u:e.quando, n:c[k].n + 1, a:e.autor || c[k].a, o:e.origem } : { p:e.quando, u:e.quando, n:1, a:e.autor || '', o:e.origem };
+    c[k] = c[k] ? { p:c[k].p, u:e.quando, n:c[k].n + 1, a:e.autor || c[k].a, o:e.origem, er:c[k].er || e.er, pr:c[k].pr || e.praca }
+                : { p:e.quando, u:e.quando, n:1, a:e.autor || '', o:e.origem, er:e.er || '', pr:e.praca || '' };
   }
   AT_CONT = c;
 }
@@ -1804,6 +1818,7 @@ recalcContatos();
 const contato = (cod) => AT_CONT[cod] || null;
 const fDH = (iso) => iso ? `${iso.slice(8,10)}/${iso.slice(5,7)} ${iso.slice(11,16)}` : '—';
 function pedirAutor(){
+  try { const u = window.PulsarUso && PulsarUso.usuario(); if (u && u.nome && u.nome !== AT_AUTOR) { AT_AUTOR = u.nome; lsA.set('csat_ativ_autor', AT_AUTOR); } } catch(e){}
   if (AT_AUTOR) return true;
   const n = (prompt('Seu nome (aparece para a equipe como quem acionou o revendedor):') || '').trim();
   if (!n) return false;
@@ -1815,6 +1830,14 @@ function registrar(cod, acao, origem){
   lsA.set('csat_ativ_fila', AT_FILA); recalcContatos(); enviarFila(); return true;
 }
 const marcarContato = (cod, origem) => registrar(cod, 'marcar', origem || 'caixa');
+// reset em massa: um único evento quando o escopo é a praça/ER inteira; senão, um "desmarcar" por revendedor
+function resetarAcionados(cods, escopo){
+  if (!pedirAutor()) return false;
+  const base = { quando: agoraISO(), ciclo: cicloAtiv(), autor: AT_AUTOR, origem: 'reset', acao: 'desmarcar' };
+  if (escopo) AT_FILA.push(Object.assign({ id: novoId(), praca: S.praca, er: escopo.er || '', revendedor: '*' }, base));
+  else cods.forEach((cod) => AT_FILA.push(Object.assign({ id: novoId(), praca: S.praca, er: (AT._er && AT._er[cod]) || '', revendedor: String(cod) }, base)));
+  lsA.set('csat_ativ_fila', AT_FILA); recalcContatos(); enviarFila(); return true;
+}
 const desmarcarContato = (cod) => registrar(cod, 'desmarcar', 'caixa');
 const postPL = (corpo) => fetch(PL.url, { method:'POST', body: JSON.stringify(Object.assign({ chave: PL.chave }, corpo)) }).then((r)=>r.json());
 let _enviando = false;
@@ -1846,6 +1869,7 @@ async function carregarAcionamentos(){
   recalcContatos();
   await enviarFila();
   if (S.view === 'ativ') { renderAtivacao(); icons(); }
+  if (S.view === 'uso' && typeof renderUso === 'function') { renderUso(); icons(); }
 }
 function atualizarSync(){ const el = document.getElementById('atSync'); if (el) el.outerHTML = syncChip(); }
 function syncChip(){
@@ -1990,25 +2014,26 @@ function renderAtivacao(){
     corpo = `
     <section class="card">
       <div class="card-hd"><div class="hl"><span class="icchip t-warning"><i data-lucide="phone-call"></i></span><div><h2>Acionados</h2><p>Revendedores contatados e quantos dias se passaram desde o contato sem resposta do CSAT</p></div></div>
-        ${seg('aAcSit', [['sem','Sem resposta'],['resp','Responderam'],['todos','Todos']])}</div>
+        <div class="at-hd">${seg('aAcSit', [['sem','Sem resposta'],['resp','Responderam'],['todos','Todos']])}
+        <button class="btn ghost sm danger" type="button" id="atResetTodos"${lst.length ? '' : ' disabled'}><i data-lucide="rotate-ccw"></i>Resetar ${lst.length === acionados.length ? 'todos' : 'estes'} (${fI(lst.length)})</button></div></div>
       <div class="hstrip">
         <div><span class="l">Acionados</span><b>${fI(acionados.length)}</b><span class="l">de ${fI(b2.length)} que receberam</span></div>
         <div><span class="l">Responderam após o contato</span><b class="c-ok">${fI(acResp.length)}</b><span class="l">${conv==null?'—':fP(conv,0)+' de conversão'}</span></div>
         <div><span class="l">Sem resposta</span><b class="c-bad">${fI(acSemResp.length)}</b><span class="l">${diasMed==null?'—':'há '+f1(diasMed)+' dias em média'}</span></div>
         <div><span class="l">Sem resposta há 3+ dias</span><b class="${acSemResp.some((r)=>diasDesde(ac(r).u)>=3)?'c-bad':''}">${fI(acSemResp.filter((r)=>diasDesde(ac(r).u)>=3).length)}</b><span class="l">reacionar</span></div>
       </div>
-      <div class="tw"><table class="lst"><thead><tr><th>Contatado</th><th>Revendedor</th><th>ER</th><th>Telefone</th><th>Quem acionou</th><th>1º contato</th><th>Último contato</th><th class="n">Contatos</th><th class="n">Dias sem resposta</th><th>Situação</th><th></th></tr></thead><tbody>${
+      <div class="tw"><table class="lst"><thead><tr><th>Contatado</th><th>Revendedor</th><th>ER</th><th>Telefone</th><th>Quem acionou</th><th>1º contato</th><th>Último contato</th><th class="n">Contatos</th><th class="n">Dias sem resposta</th><th>Situação</th><th>Ações</th></tr></thead><tbody>${
         pagina.map((r)=>{ const c = ac(r), d = diasDesde(c.u);
           const sit = r.dia ? (respAposContato(r) ? `<span class="st-ok">✓ Respondeu ${fD(r.dia)}</span> <span class="muted">${M.diffDays(c.p.slice(0,10), r.dia)} dia(s) após</span>` : `<span class="st-ok">✓ Já tinha respondido (${fD(r.dia)})</span>`) : `<span class="badge ${sev(d)}">${d===0?'hoje':d+' dia'+(d>1?'s':'')}</span>`;
           return `<tr><td class="cc">${chk(r)}</td><td class="nm"><b>${esc(r.nome)}</b><div class="muted">${esc(r.cod)} · ${esc(r.cid)}</div></td><td>${esc(nomeU(r.er))}</td><td class="tnum">${r.fone?fmtFone(r.fone):'—'}</td><td>${esc(c.a||'—')}</td>
-            <td class="tnum">${fDH(c.p)}</td><td class="tnum">${fDH(c.u)}</td><td class="n">${fI(c.n)}</td><td class="n">${r.dia?'—':fI(d)}</td><td>${sit}</td><td>${!r.dia ? waBtn(r, 'Reacionar') : ''}</td></tr>`; }).join('')
+            <td class="tnum">${fDH(c.p)}</td><td class="tnum">${fDH(c.u)}</td><td class="n">${fI(c.n)}</td><td class="n">${r.dia?'—':fI(d)}</td><td>${sit}</td><td class="acs">${!r.dia ? waBtn(r, 'Reacionar') : ''}<button class="btn ghost sm danger" type="button" data-reset="${esc(r.cod)}" title="Tirar dos acionados"><i data-lucide="rotate-ccw"></i>Resetar</button></td></tr>`; }).join('')
         || `<tr><td colspan="11" class="sub">${acionados.length ? 'Ninguém nesta situação.' : 'Ninguém foi marcado como contatado ainda. Use a caixa "Contatado" ou o botão do WhatsApp na lista.'}</td></tr>`}
       </tbody></table></div>
       <div class="pager">${pags>1?`<button class="btn ghost sm" type="button" id="atAnt"${S.aPag===0?' disabled':''}>‹ Anterior</button><span>Página ${S.aPag+1} de ${pags}</span><button class="btn ghost sm" type="button" id="atProx"${S.aPag>=pags-1?' disabled':''}>Próxima ›</button>`:''}
         <button class="btn ghost sm" type="button" id="atCsv"><i data-lucide="download"></i>Baixar lista (CSV)</button></div>
       <p class="sub" style="margin-top:8px">${PL ? 'Os contatos são compartilhados pela equipe (planilha do PULSAR, aba acionamentos_csat) e atualizam a cada 3 minutos.' : 'Os contatos ficam salvos neste navegador.'} Respostas do survey até ${fD(hojeISO)}${D.parcial?' '+esc(D.parcial.ate):''}: quem responder sai de "Sem resposta" na próxima atualização dos dados.</p>
     </section>`;
-    AT._lstAc = ord;
+    AT._lstAc = ord; AT._lstAcTodos = lst.length === acionados.length && !q && !S.aCid && !S.aAtv;
   }
 
   el.innerHTML = `
@@ -2054,6 +2079,16 @@ function renderAtivacao(){
   el.querySelectorAll('.atchk').forEach((c) => c.onchange = () => { const ok = c.checked ? marcarContato(c.dataset.c, 'caixa') : desmarcarContato(c.dataset.c); if (!ok) c.checked = !c.checked; setTimeout(re, 150); });
   el.querySelectorAll('a.wa').forEach((a) => a.addEventListener('click', () => { if (marcarContato(a.dataset.c, 'whatsapp')) setTimeout(() => { re(); toast('Marcado como contatado'); }, 300); }));
   const bAu = $('atAutor'); if (bAu) bAu.onclick = () => { const n = (prompt('Seu nome (aparece para a equipe como quem acionou o revendedor):', AT_AUTOR) || '').trim(); if (n) { AT_AUTOR = n.slice(0,60); lsA.set('csat_ativ_autor', AT_AUTOR); re(); } };
+  el.querySelectorAll('[data-reset]').forEach((b) => b.onclick = () => {
+    const r = R0.find((x)=>x.cod===b.dataset.reset);
+    if (confirm(`Tirar ${r ? r.nome : 'este revendedor'} dos acionados? Ele volta para a lista de não contatados.`)) { desmarcarContato(b.dataset.reset); re(); toast('Acionamento resetado'); } });
+  const rt = $('atResetTodos'); if (rt) rt.onclick = () => {
+    const lista = AT._lstAc || []; if (!lista.length) return;
+    const escopoTxt = AT._lstAcTodos ? `TODOS os ${lista.length} acionados de ${CFG.pracas[S.praca].nome}${S.aEr ? ' · ' + nomeU(S.aEr) : ''}` : `os ${lista.length} acionados deste filtro`;
+    if (!confirm(`Resetar ${escopoTxt}?\n\nEles voltam para a lista de não contatados, para todos da equipe. O histórico continua na planilha.`)) return;
+    const situacaoTodas = S.aAcSit === 'todos';
+    resetarAcionados(lista.map((r)=>r.cod), AT._lstAcTodos && situacaoTodas ? { er: S.aEr } : null); re(); toast('Acionamentos resetados');
+  };
   const csv = $('atCsv'); if (csv) csv.onclick = () => {
     const linhas = [['Codigo','Revendedor','ER','Cidade','Telefone','Quem acionou','Primeiro contato','Ultimo contato','Contatos','Dias sem resposta','Respondeu em']]
       .concat((AT._lstAc||[]).map((r)=>{ const c = ac(r); return [r.cod, r.nome, nomeU(r.er), r.cid, r.fone||'', c.a||'', fDH(c.p), fDH(c.u), c.n, r.dia?'':diasDesde(c.u), r.dia||'']; }));
@@ -2063,6 +2098,78 @@ function renderAtivacao(){
   const pa = $('atAnt'), pp = $('atProx');
   if (pa) pa.onclick = () => { S.aPag--; re(); window.scrollTo({ top: $('vAtiv').offsetTop - 10, behavior:'smooth' }); };
   if (pp) pp.onclick = () => { S.aPag++; re(); window.scrollTo({ top: $('vAtiv').offsetTop - 10, behavior:'smooth' }); };
+}
+
+// ================= Uso: quem está acessando o painel (aba "acessos" da planilha do PULSAR, pagina = csat)
+const ABAS_CSAT = { plano:'Plano do dia', evol:'Evolução', cid:'Cidades', ativ:'Ativação', coment:'Comentários e focos', premio:'Premiação', sim:'Simulações', uso:'Uso' };
+let USO = { mes:null, dados:null, em:0, erro:'' };
+async function carregarUso(force){
+  const d = new Date(), mes = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  if (!force && USO.mes === mes && USO.dados && Date.now() - USO.em < 120000) return;
+  if (!window.PulsarUso || !window.CSAT_PLANILHA) { USO = { mes, dados:null, em:Date.now(), erro:'uso' }; return; }
+  try { const a = await PulsarUso.acessos(mes); USO = { mes, dados: a ? a.filter((x)=>String(x.pagina||'').startsWith('csat')) : null, em:Date.now(), erro: a ? '' : 'script' }; }
+  catch(e) { USO = { mes, dados:null, em:Date.now(), erro:'rede' }; }
+}
+function registrarUso(){
+  if (!window.PulsarUso || !window.CSAT_PLANILHA) return;
+  try { PulsarUso.registrar({ pagina:'csat', aba:S.view + (S.view==='ativ' && S.aSub==='acion' ? ' · acionados' : ''), regional:'', praca:S.praca, gvo:S.gvo, loja_id:S.loja }); } catch(e){}
+}
+function renderUso(){
+  const el = $('vUso'); if (!el) return;
+  if (!USO.dados && !USO.erro) { el.innerHTML = '<section class="card"><p class="sub">Carregando os acessos…</p></section>'; carregarUso().then(() => { if (S.view === 'uso') { renderUso(); icons(); } }); return; }
+  if (!USO.dados) {
+    el.innerHTML = `<section class="card"><h2>Os acessos ainda não estão disponíveis</h2><p class="sub" style="margin-top:6px">${USO.erro==='script' ? 'O Apps Script da planilha ainda é a versão antiga.' : USO.erro==='rede' ? 'Não foi possível ler a planilha agora. Tente de novo em instantes.' : 'O registro de uso não foi carregado.'}</p><button class="btn ghost sm" type="button" id="usoTentar"><i data-lucide="refresh-ccw"></i>Tentar de novo</button></section>`;
+    const b = $('usoTentar'); if (b) b.onclick = () => { USO.dados = null; USO.erro = ''; renderUso(); };
+    return;
+  }
+  const z = (n) => String(n).padStart(2,'0'), dd = new Date(), hoje = `${dd.getFullYear()}-${z(dd.getMonth()+1)}-${z(dd.getDate())}`;
+  const diasCorridos = dd.getDate();
+  const cods = new Set(Object.keys(CFG.pracas[S.praca].unidades));
+  const acs = USO.dados;
+  const pessoas = (D.pessoas || []).filter((p)=>p.papeis.includes('Gerente de Canal') ? CFG.incentivo && Object.entries(CFG.incentivo.gerente_canal||{}).some(([pr,n])=>pr===S.praca && n===p.nome) : p.lojas.some((c)=>cods.has(c)));
+  const outros = [...new Set(acs.filter((a)=>a.praca===S.praca).map((a)=>a.nome))].filter((n)=>n && !(D.pessoas||[]).some((p)=>p.nome===n))
+    .map((n)=>({ nome:n, papeis:[(acs.find((a)=>a.nome===n)||{}).papel || 'Outro'], lojas:[], outro:true }));
+  const evs = AT_EVT.concat(AT_FILA);
+  const rows = pessoas.concat(outros).map((p) => {
+    const a = acs.filter((x)=>x.nome===p.nome), dias = new Set(a.map((x)=>String(x.quando).slice(0,10))), ult = a.map((x)=>x.quando).sort().pop() || '';
+    const marc = evs.filter((e)=>(e.autor||'').trim().toLowerCase() === p.nome.toLowerCase() && e.acao === 'marcar').length;
+    return { p, n:a.length, dias:dias.size, hoje:dias.has(hoje), ult, marc, ativ:a.filter((x)=>String(x.aba).startsWith('ativ')).length };
+  }).sort((x,y)=> (y.hoje - x.hoje) || (y.ult > x.ult ? 1 : y.ult < x.ult ? -1 : 0) || x.p.nome.localeCompare(y.p.nome));
+  const gest = rows.filter((r)=>!r.p.outro), hj = gest.filter((r)=>r.hoje).length, mesN = gest.filter((r)=>r.n>0).length, tot = gest.length;
+  const quando = (s) => s ? `${String(s).slice(8,10)}/${String(s).slice(5,7)} ${String(s).slice(11,16)}` : '—';
+  const daPraca = acs.filter((a)=>a.praca===S.praca || rows.some((r)=>r.p.nome===a.nome));
+  const g = {}; daPraca.forEach((a)=>{ const k = ABAS_CSAT[String(a.aba).split(' · ')[0]] || a.aba || '—'; const x = g[k] = g[k] || { n:0, p:new Set() }; x.n++; x.p.add(a.nome); });
+  const telas = Object.entries(g).sort((a,b)=>b[1].n-a[1].n), max = telas.length ? telas[0][1].n : 1;
+  const hist = daPraca.slice().sort((a,b)=>String(b.quando).localeCompare(String(a.quando))).slice(0,150);
+  el.innerHTML = `
+  <section class="kpis">
+    ${kpi('Acessaram hoje', `${hj} <small>de ${tot}</small>`, 'user-check', hj >= tot/2 ? 't-primary' : 't-destructive', `<span>${fP(tot?hj/tot:0,0)} dos gestores de ${esc(CFG.pracas[S.praca].nome)}</span>`)}
+    ${kpi('Acessaram no mês', `${mesN} <small>de ${tot}</small>`, 'calendar-check', 't-accent', `<span>${tot-mesN} ainda não abriram</span>`)}
+    ${kpi('Acessos no mês', fI(daPraca.length), 'activity', 't-accent', `<span>painel do Super Desafio CSAT</span>`)}
+    ${kpi('Contatos marcados', fI(rows.reduce((s,r)=>s+r.marc,0)), 'phone-call', 't-warning', `<span>na Ativação, pela equipe</span>`)}
+  </section>
+  <section class="card">
+    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="activity"></i></span><div><h2>Uso por gestor</h2><p>GVO, GCVO/GPVO, GRVO e Gerente de Canal de ${esc(CFG.pracas[S.praca].nome)} · a pessoa se identifica na primeira visita</p></div></div>
+      <button class="btn ghost sm" type="button" id="usoAtualizar"><i data-lucide="refresh-ccw"></i>Atualizar</button></div>
+    <div class="tw"><table><thead><tr><th>Gestor</th><th>Papel</th><th>Hoje</th><th>Último acesso</th><th class="n">Dias com acesso</th><th class="n">Acessos</th><th class="n">Na Ativação</th><th class="n">Contatos marcados</th></tr></thead><tbody>${
+      rows.map((r)=>`<tr><td><b>${esc(r.p.nome)}</b><div class="muted">${r.p.outro ? 'nome digitado' : r.p.lojas.length ? r.p.lojas.map((c)=>esc(nomeU(c))).join(', ') : esc(CFG.pracas[S.praca].nome)}</div></td>
+        <td>${esc(r.p.papeis.join(', '))}</td>
+        <td>${r.hoje ? '<span class="badge ok">Acessou</span>' : '<span class="badge bad">Não acessou</span>'}</td>
+        <td class="tnum">${quando(r.ult)}</td>
+        <td class="n"><b class="${r.dias >= diasCorridos*0.6 ? 'c-ok' : r.dias > 0 ? '' : 'c-bad'}">${r.dias}</b><span class="muted"> / ${diasCorridos}</span></td>
+        <td class="n">${fI(r.n)}</td><td class="n">${fI(r.ativ)}</td><td class="n">${fI(r.marc)}</td></tr>`).join('') || '<tr><td colspan="8" class="sub">Ninguém cadastrado para esta praça.</td></tr>'}
+    </tbody></table></div>
+  </section>
+  <section class="uso2">
+    <div class="card"><div class="card-hd"><div class="hl"><h2>Abas mais usadas</h2></div></div>
+      ${telas.map(([k,x])=>`<div class="ut"><div><b>${esc(k)}</b><span class="muted">${x.n} · ${x.p.size} pessoa${x.p.size>1?'s':''}</span></div><div class="hb2"><i class="ok" style="width:${Math.round(x.n/max*100)}%"></i></div></div>`).join('') || '<p class="sub">Sem acessos.</p>'}</div>
+    <div class="card"><div class="card-hd"><div class="hl"><h2>Últimos acessos</h2></div></div>
+      <div class="tw"><table><thead><tr><th>Quando</th><th>Quem</th><th>Aba</th><th>Filtro</th></tr></thead><tbody>${
+        hist.map((a)=>`<tr><td class="tnum">${quando(a.quando)}</td><td>${esc(a.nome)}</td><td>${esc(ABAS_CSAT[String(a.aba).split(' · ')[0]] || a.aba)}${String(a.aba).includes(' · ') ? ' · ' + esc(String(a.aba).split(' · ')[1]) : ''}</td><td>${esc(a.loja_id ? nomeU(a.loja_id) : a.gvo ? 'GVO ' + a.gvo : 'Praça ' + ((CFG.pracas[a.praca]||{}).nome || a.praca || '—'))}</td></tr>`).join('') || '<tr><td colspan="4" class="sub">Sem acessos.</td></tr>'}
+      </tbody></table></div></div>
+  </section>
+  <p class="sub">Acessos feitos no computador local (localhost) não são registrados, para os testes não contarem como uso.</p>`;
+  const b = $('usoAtualizar'); if (b) b.onclick = () => { carregarUso(true).then(() => { renderUso(); icons(); }); };
 }
 
 function resumoZap(){
@@ -2091,7 +2198,14 @@ function renderFoot(){
   $('foot').innerHTML = `Survey até ${esc(D.ultima_resposta.slice(8,10)+'/'+D.ultima_resposta.slice(5,7)+' '+D.ultima_resposta.slice(11))} · PDV = Código ER captação · CSAT TOTAL = média de Sup, ER e Entrega · atualizar: <code>python atualizar_dados.py</code>`;
 }
 
+// identificação de quem acessa (igual ao PULSAR): configura antes de desenhar, para a aba Uso já ler a planilha
+let _usoIni = null;
+if (window.PulsarUso) {
+  PulsarUso.aoTrocar = (u) => { if (u && u.nome) { AT_AUTOR = u.nome; lsA.set('csat_ativ_autor', AT_AUTOR); } if (S.view === 'ativ') { renderAtivacao(); icons(); } registrarUso(); };
+  _usoIni = PulsarUso.iniciar({ pessoas: D.pessoas || [], planilha: window.CSAT_PLANILHA || { url:'', chave:'' }, ambiente: 'csat', pagina: 'csat' });
+}
 render();
+if (_usoIni) _usoIni.then((u) => { if (u && u.nome) { AT_AUTOR = u.nome; lsA.set('csat_ativ_autor', AT_AUTOR); } registrarUso(); if (S.view === 'ativ') { renderAtivacao(); icons(); } }).catch(() => {});
 })();
 </script>
 </body>
