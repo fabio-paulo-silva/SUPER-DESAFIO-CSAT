@@ -19,10 +19,15 @@ FONE_COLS = re.compile(r"(celular|telefone|fone|whats|contato|numero|número)", 
 
 def _ler(arq):
     if arq.lower().endswith(".csv"):
+        # o separador muda conforme a exportação (";" ou ","): decide pela 1ª linha
+        enc = "utf-8"
         try:
-            b = pd.read_csv(arq, sep=";", dtype=str, encoding="utf-8")
+            primeira = open(arq, encoding=enc).readline()
         except UnicodeDecodeError:
-            b = pd.read_csv(arq, sep=";", dtype=str, encoding="latin-1")
+            enc = "latin-1"
+            primeira = open(arq, encoding=enc).readline()
+        sep = ";" if primeira.count(";") >= primeira.count(",") else ","
+        b = pd.read_csv(arq, sep=sep, dtype=str, encoding=enc)
     else:
         b = pd.read_excel(arq, dtype=str)
     b.columns = [str(c).strip() for c in b.columns]
