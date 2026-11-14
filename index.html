@@ -635,11 +635,11 @@ details.card>summary{margin:0}
 <div class="tip" id="tip" role="tooltip"></div>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="dados.js"></script>
+<script>/* busca sempre a versão mais nova dos dados (o GitHub Pages deixa o navegador guardar arquivos por 10 min) */ window.__v = Math.floor(Date.now() / 60000); document.write('<script src="dados.js?v=' + window.__v + '"><\/script>');</script>
 <script src="motor.js"></script>
 <script src="planilha.js" onerror="window.CSAT_PLANILHA=null"></script>
 <script src="uso.js"></script>
-<script src="ativacao_cripto.js" onerror="window.ATIV_CRIPTO=null"></script>
+<script>document.write('<script src="ativacao_cripto.js?v=' + window.__v + '" onerror="window.ATIV_CRIPTO=null"><\/script>');</script>
 <script>if (location.protocol === "file:") document.write('<script src="ativacao.js" onerror="window.ATIVACAO=null"><\/script>');</script>
 <script>
 (function(){
