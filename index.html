@@ -510,6 +510,7 @@ details.card>summary{margin:0}
       <div><p class="eyebrow">Time Comercial · CSAT</p><h1>SUPER DESAFIO CSAT</h1></div>
     </div>
     <div class="chips">
+      <div class="glass" id="hAtualBox"><i data-lucide="refresh-ccw"></i><span id="hAtual"></span></div>
       <div class="glass"><i data-lucide="calendar-days"></i><span id="hData"></span></div>
       <div class="glass"><i data-lucide="target"></i><span id="hMeta"></span></div>
       <button class="glass" id="bAtiv" type="button"><i data-lucide="megaphone"></i><span class="opt">Ativação CSAT</span></button>
@@ -735,6 +736,9 @@ function render(){
   document.title = 'Super Desafio CSAT · ' + CFG.pracas[S.praca].nome;
   seg($('tabs'), Object.entries(CFG.pracas).map(([k,v]) => [k, v.nome]), S.praca, (v) => { S.praca = v; render(); });
   $('hData').textContent = `Base até ${fD(p.corte)} · ${p.dias} dias até ${fD(p.fim)}`;
+  { const g = D.gerado_em || '', u = D.ultima_resposta || '';
+    $('hAtual').textContent = g ? `Atualizado em ${g.slice(8,10)}/${g.slice(5,7)} às ${g.slice(11,16)}` : '';
+    $('hAtualBox').title = `Painel atualizado em ${g.slice(8,10)}/${g.slice(5,7)}/${g.slice(0,4)} às ${g.slice(11,16)} · última resposta do survey: ${u.slice(8,10)}/${u.slice(5,7)} às ${u.slice(11,16)}`; }
   $('hMeta').textContent = `Meta ${fP(p.meta,0)}`;
   _cacheDia = {}; renderFiltros();
   const pz = renderPremio(); const hz = renderHero(pz); renderVTabs(hz.fora, pz);
@@ -1677,7 +1681,7 @@ function renderHoje(){
   const csatPerT = mediaDims(dims, (d)=> tot[d].n>0 ? tot[d].p/tot[d].n : null);
   const acumT = csatAte(codsT, P.fim), antesT = csatAte(codsT, vesp);
   const dT = acumT!=null && antesT!=null ? acumT - antesT : null;
-  const sinal = (v) => v==null ? '—' : (v>=0?'+':'−') + f2pp(Math.abs(v));
+  const sinal = (v) => v==null ? '—' : Math.abs(v) < 0.00005 ? '0,00 p.p.' : (v>0?'+':'−') + f2pp(Math.abs(v));
   const barra = (v) => `<div class="hb2"><i class="${atingCls(v)}" style="width:${Math.min(100,(v||0)*100)}%"></i></div>`;
   const fmtM = (v) => v>=1 ? fI(v) : f1(v);
   const titulo = P.pre==='hoje' ? 'Resultado de hoje' : P.pre==='ontem' ? 'Resultado de ontem' : P.unico ? 'Resultado do dia' : 'Resultado do período';
