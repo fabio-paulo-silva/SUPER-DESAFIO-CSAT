@@ -1,13 +1,13 @@
-# SUPER DESAFIO CSAT · São Luís e Paraíba
+# SUPER DESAFIO CSAT
 
-Painel de acompanhamento do desafio CSAT: cada PDV (ERs, HUB e Híbridas) e cada praça fechando **89% de CSAT TOTAL até 30/11/2026**.
+Painel de acompanhamento do desafio CSAT: cada loja Híbrida, Venda Direta e HUB de todas as praças (São Luís, Paraíba, Litoral, Mossoró, Natal, OCE, OMA e RN Sul) fechando **89% de CSAT TOTAL até 30/11/2026**, cada praça com a sua aba.
 
 Endereço: https://fabio-paulo-silva.github.io/SUPER-DESAFIO-CSAT/
 
 ## Abas
 - **Plano do dia:** KPIs da praça, prioridades, meta de hoje (diarização) e atingimento por PDV.
 - **Comentários e focos:** temas das notas 1–3, ações sugeridas, matriz tema × PDV e os comentários.
-- **Premiação:** Gerente de Canal (R$ 500) e ranking dos gerentes (R$ 300).
+- **Evolução, Cidades, Ativação e Uso:** acumulado com projeção até 30/11, CSAT por cidade, revendedores que receberam a pesquisa (com WhatsApp) e quem acessou o painel.
 - **Simulações:** parâmetros, cenários, plano por dimensão, calendário e acompanhamento.
 
 ## Arquivos

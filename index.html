@@ -263,6 +263,9 @@ h3.rk{font-size:14px;margin:14px 0 8px;color:var(--ink-2);font-weight:600}
 #fPre button small{font-weight:600;opacity:.75;font-size:11px}
 #fPre button:disabled{opacity:.4;cursor:not-allowed}
 #fPre{flex-wrap:wrap;max-width:100%}
+#tabs{flex-wrap:wrap;max-width:100%}
+.kpi .delta{white-space:normal}
+#tabs button{padding:7px 12px}
 .filter .fld{max-width:100%}
 .pdd{display:flex;align-items:flex-end;gap:3px;height:150px;padding:6px 2px 0;margin-bottom:4px;overflow-x:auto}
 .pdd-i{flex:1 0 14px;max-width:46px;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;cursor:default}
@@ -560,7 +563,6 @@ details.card>summary{margin:0}
 
   <div id="vComent" class="sec" hidden></div>
 
-  <div id="vPremio" class="sec" hidden><section class="card" id="premio"></section></div>
 
   <div id="vSim" class="sec" hidden>
   <div class="card">
@@ -666,7 +668,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>'
 // ---------- estado
 const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', aEr:'', aCid:'', aStatus:'pend', aAtv:'', aQ:'', aFone:true, aPag:0, aSub:'lista', aCont:'todos', aAcSit:'sem', pPre:'', pIni:'', pFim:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
 let S = Object.assign({}, PADRAO);
-try { const s = JSON.parse(localStorage.getItem('csat_desafio_estado')||'null'); if (s) S = Object.assign(S, {praca:s.praca||S.praca, heat:s.heat||S.heat, view:s.view||S.view}); } catch(e){}
+try { const s = JSON.parse(localStorage.getItem('csat_desafio_estado')||'null'); if (s) S = Object.assign(S, {praca:s.praca||S.praca, heat:s.heat||S.heat, view:(s.view && s.view !== 'premio') ? s.view : S.view}); } catch(e){}
 try { const t = localStorage.getItem('csat_desafio_tema'); if (t) document.documentElement.dataset.theme = t; } catch(e){}
 const salvar = () => { try { localStorage.setItem('csat_desafio_estado', JSON.stringify({praca:S.praca, heat:S.heat, view:S.view})); } catch(e){} };
 
@@ -741,7 +743,7 @@ function render(){
     $('hAtualBox').title = `Painel atualizado em ${g.slice(8,10)}/${g.slice(5,7)}/${g.slice(0,4)} às ${g.slice(11,16)} · última resposta do survey: ${u.slice(8,10)}/${u.slice(5,7)} às ${u.slice(11,16)}`; }
   $('hMeta').textContent = `Meta ${fP(p.meta,0)}`;
   _cacheDia = {}; renderFiltros();
-  const pz = renderPremio(); const hz = renderHero(pz); renderVTabs(hz.fora, pz);
+  const hz = renderHero(); renderVTabs(hz.fora);
   renderCenarios(); renderPlano(); renderCascata(); renderHeat(); renderMult(); renderAcomp(); renderComentarios(); renderEvolucao(); renderCidades(); renderAtivacao(); renderHoje(); registrarUso(); renderFoot(); icons();
 }
 
@@ -1132,14 +1134,19 @@ function renderHero(pz){
     kpi(`CSAT TOTAL · ${filtrado() ? esc(nomeFiltro()) : 'praça'}`, fP(csatF), 'gauge', gap>0?'t-destructive':'t-primary',
       `<span class="delta ${gap>0?'down':'up'}"><i data-lucide="${gap>0?'trending-down':'trending-up'}"></i>${gap>0?'−':'+'}${fPP(Math.abs(gap))}</span><span>meta ${fP(p.meta,0)} · ${filtrado() ? 'praça ' + fP(R.atual.total) : 'teto na média ' + fP(R.teto.total)}</span>`,
       `<div class="prog" aria-hidden="true"><i class="${gap>0?'bad':''}" style="width:${pos(csatF)}%"></i><b style="left:${pos(p.meta)}%"></b></div>`) +
-    kpi(`Meta de hoje · ${dow(p.inicioPlano)} ${fD(p.inicioPlano)}`, `${metaHojeTxt} <small>respostas</small>`, 'target', 't-accent',
+    kpi(`Meta de hoje · ${dow(p.inicioPlano)} ${fD(p.inicioPlano)}`, `${metaHojeTxt} <small>${metaHoje===1?"resposta":"respostas"}</small>`, 'target', 't-accent',
       (D.parcial && D.parcial.dia===p.inicioPlano ? (() => { const h = Is.reduce((a,I)=>a+(I.hoje||0),0); const at = metaDiaP>0 ? h/metaDiaP : null;
         return `<span class="delta ${deltaCls(at)}">hoje até ${esc(D.parcial.ate)}: ${fI(h)}</span><span>${pctAting(at)} da meta</span>`; })()
         : `<span>${metaDiaP>=1 ? plural(metaHojeProm,'nota','notas')+' 4–5' : 'média/dia'} · ${p.dias} dias até ${fD(p.fim)}</span>`)) +
     kpi(`Realizado · ${esc(PER.longo)}`, `${fI(ontem)} <small>${ontem===1?'resposta':'respostas'}</small>`, 'check-check', 't-primary',
       `<span class="delta ${deltaCls(ating)}">${ating==null?'sem diarização':pctAting(ating)+' da diarização'}</span><span>${plural(ontemProm,'nota','notas')} 4–5${csatPer!=null?' · CSAT '+fP(csatPer):''}</span>`) +
-    kpi('Premiação', `${fR(pz.hoje)} <small>de ${fR(pz.emJogo)}</small>`, 'trophy', 't-warning',
-      `<span class="delta ${pz.proj>0?'up':'down'}">projeção ${fR(pz.proj)}</span>`);
+    (() => { const Imap = Object.fromEntries(us.map((x,i)=>[x.cod, Is[i]]));
+      const rsP = filtrado() ? us : R.unidades;
+      const proj = projecao(rsP, Imap).total;
+      const plano = filtrado() ? grupoCSAT(us, (x,d) => x.temPlano && x.ativas.includes(d) ? [x.P[d], x.V[d]] : [0,0]).total : R.final.total;
+      const fecha = proj != null && proj >= p.meta - 1e-9;
+      return kpi(`Projeção em ${fD(p.fim)}`, fP(proj), 'trending-up', fecha ? 't-primary' : 't-destructive',
+        `<span class="delta ${fecha?'up':'down'}">${fecha ? 'fecha' : 'não fecha'} na média atual</span><span>cumprindo a diarização: ${fP(plano)}</span>`); })();
 
   // prioridades (curtas)
   const L = [];
@@ -1195,19 +1202,16 @@ function renderHero(pz){
   return { fora };
 }
 
-function renderVTabs(fora, pz){
-  const ganh = pz ? [pz.canal, ...pz.linhas].filter((g)=>g.est.k==='win').length : 0;
-  const tabs = [['plano','list-checks','Plano do dia', fora], ['evol','chart-line','Evolução', null], ['cid','map-pin','Cidades', null], ['ativ','megaphone','Ativação', null], ['coment','message-square-text','Comentários e focos', null], ['premio','trophy','Premiação', null], ['sim','sliders-horizontal','Simulações', null], ['uso','activity','Uso', null]];
+function renderVTabs(fora){
+  const tabs = [['plano','list-checks','Plano do dia', fora], ['evol','chart-line','Evolução', null], ['cid','map-pin','Cidades', null], ['ativ','megaphone','Ativação', null], ['coment','message-square-text','Comentários e focos', null], ['sim','sliders-horizontal','Simulações', null], ['uso','activity','Uso', null]];
   $('vtabs').innerHTML = tabs.map(([k,ic,l,c]) => `<button type="button" class="tab${S.view===k?' on':''}" data-v="${k}" aria-pressed="${S.view===k}"><i data-lucide="${ic}"></i>${l}${c?`<span class="cnt">${c}</span>`:''}</button>`).join('');
-  $('vtabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; S.view = b.dataset.v; salvar(); showView(); renderVTabs(fora, pz); icons(); };
+  $('vtabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; S.view = b.dataset.v; salvar(); showView(); renderVTabs(fora); icons(); };
   showView();
 }
-function showView(){ $('vUso').hidden = S.view!=='uso'; if (S.view === 'uso') renderUso(); if (S.view === 'ativ' && typeof carregarAcionamentos === 'function' && AT_SYNC.quando && (Date.now() - Date.parse(AT_SYNC.quando)) > 60000) carregarAcionamentos(); $('vAtiv').hidden = S.view!=='ativ'; $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vPremio').hidden = S.view!=='premio'; $('vSim').hidden = S.view!=='sim'; }
+function showView(){ $('vUso').hidden = S.view!=='uso'; if (S.view === 'uso') renderUso(); if (S.view === 'ativ' && typeof carregarAcionamentos === 'function' && AT_SYNC.quando && (Date.now() - Date.parse(AT_SYNC.quando)) > 60000) carregarAcionamentos(); $('vAtiv').hidden = S.view!=='ativ'; $('vCid').hidden = S.view!=='cid'; $('vEvol').hidden = S.view!=='evol'; $('vComent').hidden = S.view!=='coment'; $('vPlano').hidden = S.view!=='plano'; $('vSim').hidden = S.view!=='sim'; }
 function icons(){ try { if (window.lucide) window.lucide.createIcons(); } catch(e){} }
 
-// ================= premiação e ranking de gerentes
-const INC = Object.assign({ valor_canal:500, valor_gerente:300, gerente_canal:{} }, CFG.incentivo || {});
-const fR = (v) => 'R$ ' + nf0.format(v);
+// ================= CSAT agregado de grupos e projeção
 const DIMS3 = ['sup','er','ent'];
 
 /** CSAT TOTAL agregado de um grupo de unidades, com acréscimo opcional por unidade/dimensão. */
@@ -1253,72 +1257,6 @@ function estadoPremio(atual, proj){
   return {k:'lose', lbl:'Fora da meta', ic:'✕'};
 }
 const ORD_EST = {win:0, risk:1, near:2, lose:3};
-
-function renderPremio(){
-  const p = R.params, meta = p.meta;
-  const us = planejadas(R).filter((x)=>x.temPlano);
-  const Imap = Object.fromEntries(us.map((x)=>[x.cod, insightsPDV(x)]));
-  // grupos por GVO
-  const grupos = {};
-  for (const x of us){ const g = infoU(x.cod).gvo || ('PDV ' + x.cod); (grupos[g] = grupos[g] || []).push(x); }
-  const linhas = Object.entries(grupos).map(([nome, rs]) => {
-    const atual = grupoCSAT(rs).total, proj = projecao(rs, Imap).total;
-    const plano = grupoCSAT(rs, (x,d) => ativa(x,d) ? [x.P[d], x.V[d]] : [0,0]).total;
-    const Is = rs.map((x)=>Imap[x.cod]);
-    const metaDia = Is.reduce((a,I)=>a+I.metaDia,0), metaPer = Is.reduce((a,I)=>a+I.metaPer,0), ontem = Is.reduce((a,I)=>a+I.ontem.resp,0);
-    const nov = Is.reduce((a,I)=>a+I.ritmoNov,0);
-    const est = estadoPremio(atual, proj);
-    return { nome, rs, atual, proj, plano, est, valor: INC.valor_gerente,
-      R: rs.reduce((a,x)=>a+x.R,0), porDia: rs.reduce((a,x)=>a+(x.porDia||0),0), metaDia, ontem, nov,
-      metaPer, atOntem: metaPer>0 ? Is.reduce((a,I)=>a+I.respMeta,0)/metaPer : null, atNov: metaDia>0 ? nov/metaDia : null,
-      seg45: atual < meta ? seguidas(rs, true) : null, folga: atual >= meta ? seguidas(rs, false) : null };
-  }).sort((a,b) => ORD_EST[a.est.k]-ORD_EST[b.est.k] || b.atual-a.atual);
-
-  // gerente de canal = praça
-  const projP = projecao(R.unidades, Imap).total;
-  const canal = { nome: (INC.gerente_canal||{})[S.praca] || 'Gerente de Canal', atual: R.atual.total, proj: projP, plano: R.final.total, est: estadoPremio(R.atual.total, projP), valor: INC.valor_canal };
-  const todos = [canal, ...linhas];
-  const emJogo = todos.reduce((a,g)=>a+g.valor,0);
-  const hoje = todos.filter((g)=>g.atual>=meta-1e-9).reduce((a,g)=>a+g.valor,0);
-  const proj = todos.filter((g)=>g.proj>=meta-1e-9).reduce((a,g)=>a+g.valor,0);
-
-  const pos = (v) => Math.max(0, Math.min(100, (v-0.80)/0.20*100));
-  const barra = (g) => `<div class="pbar" aria-hidden="true"><div class="pfill ${g.est.k}" style="width:${pos(g.atual)}%"></div><div class="pproj" style="left:${pos(g.proj)}%" title="projeção"></div><div class="pmeta" style="left:${pos(meta)}%"></div></div>`;
-  const chip = (g) => `<span class="pchip ${g.est.k}"><b>${g.est.ic}</b>${g.est.lbl}</span>`;
-  const falta = (g) => g.atual >= meta-1e-9
-    ? `Folga de <b>${fPP(g.atual-meta)}</b>${g.folga!=null?` · aguenta <b>${plural(g.folga,'nota','notas')} 1–3</b> seguidas`:''}`
-    : `Faltam <b>${fPP(meta-g.atual)}</b>${g.seg45!=null?` · <b>${plural(g.seg45,'nota','notas')} 4–5</b> seguidas p/ ${fP(meta,0)}`:''}`;
-
-  const pr = $('premio');
-  pr.innerHTML = `
-    <div class="card-hd"><div class="hl"><span class="icchip t-warning"><i data-lucide="trophy"></i></span><div><h2>Premiação</h2><p>${esc(canal.nome)} ${fR(INC.valor_canal)} se a praça fechar ≥ ${fP(meta,0)} · gerentes ${fR(INC.valor_gerente)} pelo agregado das PDVs</p></div></div></div>
-    <div class="pkpis">
-      <div class="pk"><div class="k">Em jogo na praça</div><div class="v">${fR(emJogo)}</div><div class="d">${todos.length} premiações</div></div>
-      <div class="pk win"><div class="k">Se fechasse hoje</div><div class="v">${fR(hoje)}</div><div class="d">${todos.filter((g)=>g.atual>=meta-1e-9).length} de ${todos.length} ganhando</div><div class="mbar"><i style="width:${emJogo?hoje/emJogo*100:0}%"></i></div></div>
-      <div class="pk"><div class="k">Na projeção de ${fD(p.fim)}</div><div class="v">${fR(proj)}</div><div class="d">média e qualidade de nov.</div><div class="mbar"><i style="width:${emJogo?proj/emJogo*100:0}%"></i></div></div>
-      <div class="pk lose"><div class="k">Em risco</div><div class="v">${fR(emJogo-proj)}</div></div>
-    </div>
-    <div class="canal pr-row ${canal.est.k}">
-      <div class="who"><div class="coin ${canal.est.k}" aria-hidden="true">R$</div><div><div class="nm">${esc(canal.nome)}</div><div class="meta-l">Gerente de Canal · praça ${esc(CFG.pracas[S.praca].nome)}</div></div></div>
-      <div class="val">${fR(canal.valor)}</div>
-      <div class="csat"><div class="row"><b>${fP(canal.atual)}</b><span class="muted">proj. ${fP(canal.proj)}</span></div>${barra(canal)}</div>
-      <div class="st">${chip(canal)}<div class="falta">${canal.atual>=meta-1e-9?`Folga de <b>${fPP(canal.atual-meta)}</b>`:`Faltam <b>${fPP(meta-canal.atual)}</b>`} · ~${f1(R.porDia)} respostas/dia</div></div>
-    </div>
-    <h3 class="rk">Ranking dos gerentes</h3>
-    <ol class="rank">${linhas.map((g,i) => `
-      <li class="pr-row ${g.est.k}">
-        <div class="who"><div class="pos">${i+1}º</div><div><div class="nm">${esc(g.nome)}</div><div class="meta-l">${g.rs.map((x)=>esc(nomeU(x.cod))).join(', ')}</div></div></div>
-        <div class="val"><span class="coin sm ${g.est.k}" aria-hidden="true">R$</span>${fR(g.valor)}</div>
-        <div class="csat"><div class="row"><b>${fP(g.atual)}</b><span class="muted">proj. ${fP(g.proj)}</span></div>${barra(g)}</div>
-        <div class="ating">
-          <div><span class="k">${esc(periodo().label)} x diarização</span><span class="badge ${atingCls(g.atOntem)}">${pctAting(g.atOntem)}</span><span class="muted">${fI(g.ontem)} de ${g.metaPer>=1?fI(g.metaPer):f1(g.metaPer)}</span></div>
-          <div><span class="k">Nov. x diarização</span><span class="badge ${atingCls(g.atNov)}">${pctAting(g.atNov)}</span><span class="muted">${f1(g.nov)} de ${f1(g.metaDia)}/dia</span></div>
-        </div>
-        <div class="st">${chip(g)}<div class="falta">${falta(g)}</div></div>
-      </li>`).join('')}</ol>
-    <div class="legend" style="margin-top:8px"><span><i style="width:14px;height:8px;border-radius:3px;background:var(--ink-2)"></i>CSAT TOTAL atual (escala 80%–100%)</span><span><i style="width:3px;height:12px;background:var(--accent)"></i>Projeção ${fD(p.fim)}</span><span><i style="width:3px;height:14px;background:var(--ink)"></i>Meta ${fP(meta,0)}</span></div>`;
-  return { emJogo, hoje, proj, linhas, canal };
-}
 
 // ================= comentários e focos para ação
 const TEMAS = (D.temas || []).map(([id, nome, acao]) => ({id, nome, acao}));
@@ -2105,7 +2043,7 @@ function renderAtivacao(){
 }
 
 // ================= Uso: quem está acessando o painel (aba "acessos_csat" da planilha do PULSAR)
-const ABAS_CSAT = { plano:'Plano do dia', evol:'Evolução', cid:'Cidades', ativ:'Ativação', coment:'Comentários e focos', premio:'Premiação', sim:'Simulações', uso:'Uso' };
+const ABAS_CSAT = { plano:'Plano do dia', evol:'Evolução', cid:'Cidades', ativ:'Ativação', coment:'Comentários e focos', sim:'Simulações', uso:'Uso' };
 let USO = { mes:null, dados:null, em:0, erro:'' };
 async function carregarUso(force){
   const d = new Date(), mes = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -2130,7 +2068,7 @@ function renderUso(){
   const diasCorridos = dd.getDate();
   const cods = new Set(Object.keys(CFG.pracas[S.praca].unidades));
   const acs = USO.dados;
-  const pessoas = (D.pessoas || []).filter((p)=>p.papeis.includes('Gerente de Canal') ? CFG.incentivo && Object.entries(CFG.incentivo.gerente_canal||{}).some(([pr,n])=>pr===S.praca && n===p.nome) : p.lojas.some((c)=>cods.has(c)));
+  const pessoas = (D.pessoas || []).filter((p)=>p.lojas.some((c)=>cods.has(c)));
   const outros = [...new Set(acs.filter((a)=>a.praca===S.praca).map((a)=>a.nome))].filter((n)=>n && !(D.pessoas||[]).some((p)=>p.nome===n))
     .map((n)=>({ nome:n, papeis:[(acs.find((a)=>a.nome===n)||{}).papel || 'Outro'], lojas:[], outro:true }));
   const evs = AT_EVT.concat(AT_FILA);
@@ -2153,7 +2091,7 @@ function renderUso(){
     ${kpi('Contatos marcados', fI(rows.reduce((s,r)=>s+r.marc,0)), 'phone-call', 't-warning', `<span>na Ativação, pela equipe</span>`)}
   </section>
   <section class="card">
-    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="activity"></i></span><div><h2>Uso por gestor</h2><p>GVO, GCVO/GPVO, GRVO e Gerente de Canal de ${esc(CFG.pracas[S.praca].nome)} · a pessoa se identifica na primeira visita</p></div></div>
+    <div class="card-hd"><div class="hl"><span class="icchip t-accent"><i data-lucide="activity"></i></span><div><h2>Uso por gestor</h2><p>GVO, GCVO/GPVO e GRVO de ${esc(CFG.pracas[S.praca].nome)} · a pessoa se identifica na primeira visita</p></div></div>
       <button class="btn ghost sm" type="button" id="usoAtualizar"><i data-lucide="refresh-ccw"></i>Atualizar</button></div>
     <div class="tw"><table><thead><tr><th>Gestor</th><th>Papel</th><th>Hoje</th><th>Último acesso</th><th class="n">Dias com acesso</th><th class="n">Acessos</th><th class="n">Na Ativação</th><th class="n">Contatos marcados</th></tr></thead><tbody>${
       rows.map((r)=>`<tr><td><b>${esc(r.p.nome)}</b><div class="muted">${r.p.outro ? 'nome digitado' : r.p.lojas.length ? r.p.lojas.map((c)=>esc(nomeU(c))).join(', ') : esc(CFG.pracas[S.praca].nome)}</div></td>
@@ -2185,8 +2123,6 @@ function resumoZap(){
   L.push(`*Super Desafio CSAT – ${CFG.pracas[S.praca].nome} · ${dow(hoje)}, ${fD(hoje)}*`);
   L.push(`Praça: ${fP(R.atual.total)} · meta ${fP(p.meta,0)} · ${p.dias} dias para fechar`);
   L.push(`Meta de hoje: *${md>=1?fI(mh):f1(md)} respostas* · ontem ${fI(on)} (${pctAting(md>0?on/md:null)} da meta)`);
-  try { const pz = renderPremio(); L.push(`Premiação: ${fR(pz.hoje)} de ${fR(pz.emJogo)} garantidos se fechasse hoje · projeção ${fR(pz.proj)}`);
-    L.push(pz.linhas.map((g,i) => `${i+1}º ${g.nome} ${fP(g.atual)} (${g.est.lbl})`).join(' · ')); } catch(e){}
   L.push('');
   us.forEach((x,i) => { const I = Is[i]; L.push(`• *${nomeU(x.cod)}* ${fP(x.totalAtual)} · hoje ${I.metaDia>=1?fI(I.metaHoje)+' resp. ('+fI(I.metaHojeProm)+' notas 4–5)':I.metaTxt} · ${periodo().label.toLowerCase()} ${fI(I.ontem.resp)}${I.metaPer>0?' ('+pctAting(I.atingOntem)+')':''}`); });
   return L.join('\n');

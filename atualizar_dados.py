@@ -33,13 +33,6 @@ CONFIG = {
     # data do plano "aprovado" usado no acompanhamento (realizado x plano)
     "baseline": "2026-11-08",
     "entrega_entra": True,
-    # Premiação: Gerente de Canal ganha se a PRAÇA fechar >= meta em 30/11;
-    # cada Gerente (GVO) ganha se o resultado AGREGADO das suas PDVs com meta fechar >= meta.
-    "incentivo": {
-        "valor_canal": 500,
-        "valor_gerente": 300,
-        "gerente_canal": {"SLZ": "Idayane Celles", "PB": "Padã Feitosa"},
-    },
     "pracas": {
         "SLZ": {
             "nome": "São Luís",
@@ -64,6 +57,30 @@ CONFIG = {
         },
     },
 }
+
+# Demais praças entram sozinhas pelo dCentros: toda loja Híbrida, Venda Direta ou HUB tem meta própria.
+CANAIS_DESAFIO = {"Híbrida", "Venda Direta", "HUB"}
+NOMES_PRACA = {"OCE": "OCE", "OMA": "OMA", "RN SUL": "RN Sul"}
+
+
+def completar_pracas():
+    """Acrescenta ao CONFIG as praças do dCentros que ainda não estão configuradas (SLZ e PB ficam como estão)."""
+    import unicodedata
+    arq = glob.glob(os.path.join(PASTA, "dCentros", "*.xlsx"))[0]
+    c = pd.read_excel(arq)
+    c.columns = ["cod", "loja", "praca", "gvo", "gcvo", "grvo", "canal"]
+    c = c[c["canal"].isin(CANAIS_DESAFIO) & c["cod"].notna()]
+    ja = {cod for pr in CONFIG["pracas"].values() for cod in pr["unidades"]}
+    nomes_ja = {"SÃO LUÍS", "PARAÍBA"}
+    for praca, g in sorted(c.groupby("praca"), key=lambda kv: kv[0]):
+        praca = str(praca).strip()
+        if praca.upper() in nomes_ja:
+            continue
+        sigla = unicodedata.normalize("NFKD", praca).encode("ascii", "ignore").decode().upper().replace(" ", "")
+        unidades = {str(int(x)): "meta" for x in g["cod"] if str(int(x)) not in ja}
+        if unidades:
+            CONFIG["pracas"][sigla] = {"nome": NOMES_PRACA.get(praca.upper(), praca.title()), "unidades": unidades}
+
 
 COLS = {
     "Satisfação Supervisora": "sup",
@@ -127,6 +144,7 @@ TEMA_IDX = {tid: i for i, (tid, *_r) in enumerate(TODOS)}
 
 
 def main():
+    completar_pracas()
     arquivos = sys.argv[1:] or sorted(glob.glob(os.path.join(PASTA, "Dados", "**", "*.xlsx"), recursive=True))
     arquivos = [a for a in arquivos if not os.path.basename(a).startswith("~$")]
     if not arquivos:
@@ -236,7 +254,6 @@ def main():
             _add(info.get("gvo"), "GVO", cod)
             _add(info.get("gcvo"), "GCVO/GPVO", cod)
             _add(info.get("grvo"), "GRVO", cod)
-        _add(CONFIG.get("incentivo", {}).get("gerente_canal", {}).get(sigla), "Gerente de Canal", "")
 
     ultimo = df["data"].max()
     # Se a base vai até HOJE, o dia de hoje está incompleto: o corte fica em ontem
