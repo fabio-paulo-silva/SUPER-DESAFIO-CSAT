@@ -666,7 +666,7 @@ const dow = (iso) => DOWL[new Date(iso+'T12:00:00Z').getUTCDay()];
 const esc = (s) => String(s).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ---------- estado
-const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', aEr:'', aCid:'', aStatus:'pend', aAtv:'', aQ:'', aFone:true, aPag:0, aSub:'lista', aCont:'todos', aAcSit:'sem', pPre:'', pIni:'', pFim:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
+const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', aEr:'', aCid:'', aStatus:'pend', aAtv:'', aQ:'', aFone:true, aPag:0, aSub:'lista', aCont:'todos', aAcSit:'todos', pPre:'', pIni:'', pFim:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
 let S = Object.assign({}, PADRAO);
 try { const s = JSON.parse(localStorage.getItem('csat_desafio_estado')||'null'); if (s) S = Object.assign(S, {praca:s.praca||S.praca, heat:s.heat||S.heat, view:(s.view && s.view !== 'premio') ? s.view : S.view}); } catch(e){}
 try { const t = localStorage.getItem('csat_desafio_tema'); if (t) document.documentElement.dataset.theme = t; } catch(e){}
@@ -1956,7 +1956,7 @@ function renderAtivacao(){
     corpo = `
     <section class="card">
       <div class="card-hd"><div class="hl"><span class="icchip t-warning"><i data-lucide="phone-call"></i></span><div><h2>Acionados</h2><p>Revendedores contatados e quantos dias se passaram desde o contato sem resposta do CSAT</p></div></div>
-        <div class="at-hd">${seg('aAcSit', [['sem','Sem resposta'],['resp','Responderam'],['todos','Todos']])}
+        <div class="at-hd">${seg('aAcSit', [['todos','Todos'],['resp','Responderam'],['sem','Sem resposta']])}
         <button class="btn ghost sm danger" type="button" id="atResetTodos"${lst.length ? '' : ' disabled'}><i data-lucide="rotate-ccw"></i>Resetar ${lst.length === acionados.length ? 'todos' : 'estes'} (${fI(lst.length)})</button></div></div>
       <div class="hstrip">
         <div><span class="l">Acionados</span><b>${fI(acionados.length)}</b><span class="l">de ${fI(b2.length)} que receberam</span></div>
@@ -1986,7 +1986,7 @@ function renderAtivacao(){
       <div><span class="l">Receberam a pesquisa</span><b>${fI(b2.length)}</b><span class="l">ativos no ciclo</span></div>
       <div><span class="l">Responderam</span><b class="c-ok">${fI(resp)}</b><div class="hb2"><i class="${taxa>=0.2?'ok':'bad'}" style="width:${Math.min(100,taxa*100)}%"></i></div><span class="l">${fP(taxa,1)} de resposta</span></div>
       <div><span class="l">Não responderam</span><b class="c-bad">${fI(pend)}</b><span class="l">${fI(pendFone)} com telefone</span></div>
-      <div><span class="l">Acionados</span><b>${fI(acionados.length)}</b><span class="l">${fI(acSemResp.length)} ainda sem resposta</span></div>
+      <div><span class="l">Acionados</span><b>${fI(acionados.length)}</b><span class="l"><span class="c-ok">${fI(acResp.length)} responderam</span> · ${fI(acSemResp.length)} sem resposta</span></div>
     </div>
     <div class="filter at-f" style="padding:0"><div class="row">
       <div class="fld"><label>Visão</label><div class="ptabs" data-ak="aSub"><button type="button" data-v="lista" aria-pressed="${sub==='lista'}">Revendedores</button><button type="button" data-v="acion" aria-pressed="${sub==='acion'}">Acionados <span class="cnt2">${fI(acionados.length)}</span></button></div></div>
