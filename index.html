@@ -1919,7 +1919,8 @@ function renderAtivacao(){
   // ---- sub-aba: lista de revendedores
   let corpo = '';
   if (sub === 'lista') {
-    const lst = b2.filter((r)=>(S.aStatus==='todos' || (S.aStatus==='pend' ? !r.dia : !!r.dia)) && (!S.aFone || r.fone || S.aStatus==='resp') && busca(r)
+    const soCont = S.aCont === 'sim';
+    const lst = b2.filter((r)=>(soCont || S.aStatus==='todos' || (S.aStatus==='pend' ? !r.dia : !!r.dia)) && (soCont || !S.aFone || r.fone || S.aStatus==='resp') && busca(r)
       && (S.aCont !== 'nao' || !ac(r)) && (S.aCont !== 'sim' || ac(r)));
     const pags = Math.max(1, Math.ceil(lst.length/PG)); S.aPag = Math.min(S.aPag || 0, pags-1);
     const ord = lst.slice().sort((a,b)=>(!!a.dia - !!b.dia) || (!!ac(a) - !!ac(b)) || a.nome.localeCompare(b.nome));
@@ -1933,11 +1934,17 @@ function renderAtivacao(){
       ${pagina[0] ? `<div class="prev" id="atPrev">${esc(msg(pagina[0]))}</div>` : ''}
     </section>
     <section class="card">
-      <div class="card-hd"><div class="hl"><span class="icchip t-destructive"><i data-lucide="users"></i></span><div><h2>Revendedores</h2><p>${fI(lst.length)} na lista · marque a caixa quando entrar em contato (o botão do WhatsApp já marca)</p></div></div>
+      <div class="card-hd"><div class="hl"><span class="icchip t-destructive"><i data-lucide="users"></i></span><div><h2>Revendedores</h2><p>${fI(lst.length)} na lista${soCont ? ` · <b class="c-ok">${fI(lst.filter((r)=>respAposContato(r)).length)} responderam após o contato</b> · <b class="c-bad">${fI(lst.filter((r)=>!r.dia).length)} sem resposta</b>` : ''} · marque a caixa quando entrar em contato (o botão do WhatsApp já marca)</p></div></div>
         ${seg('aCont', [['todos','Todos'],['nao','Não contatados'],['sim','Contatados']])}</div>
       <div class="tw"><table class="lst"><thead><tr><th>Contatado</th><th>Revendedor</th><th>Código</th><th>ER</th><th>Cidade</th><th>Ativ.</th><th>Situação</th><th>Telefone</th><th></th></tr></thead><tbody>${
         pagina.map((r)=>{ const c = ac(r); return `<tr${c?' class="ok-row"':''}><td class="cc">${chk(r)}${c?`<span class="muted"> ${fDH(c.u)}${c.a?' · '+esc(c.a):''}</span>`:''}</td><td class="nm"><b>${esc(r.nome)}</b></td><td class="tnum">${esc(r.cod)}</td><td>${esc(nomeU(r.er))}</td><td>${esc(r.cid)}</td><td>${esc(r.atv)}</td>
-          <td>${r.dia ? `<span class="st-ok">✓ Respondeu ${fD(r.dia)}</span>${r.nota?` <span class="muted">nota ${r.nota}</span>`:''}` : '<span class="st-pend">● Pendente</span>'}</td>
+          <td>${(() => { const nota = r.nota ? ` <span class="muted">nota ${r.nota}</span>` : '';
+            if (c) {
+              if (r.dia && r.dia >= c.p.slice(0,10)) { const dd = M.diffDays(c.p.slice(0,10), r.dia); return `<span class="st-ok">✓ Respondeu após o contato</span> <span class="muted">${fD(r.dia)} · ${dd===0?'no mesmo dia':dd+' dia'+(dd>1?'s':'')+' depois'}</span>${nota}`; }
+              if (r.dia) return `<span class="st-ok">✓ Já tinha respondido</span> <span class="muted">${fD(r.dia)}, antes do contato</span>${nota}`;
+              const d = diasDesde(c.u); return `<span class="st-pend">● Não respondeu</span> <span class="badge ${d>=3?'bad':d>=1?'warn':'ok'}">${d===0?'contatado hoje':'há '+d+' dia'+(d>1?'s':'')}</span>`;
+            }
+            return r.dia ? `<span class="st-ok">✓ Respondeu ${fD(r.dia)}</span>${nota}` : '<span class="st-pend">● Pendente</span>'; })()}</td>
           <td class="tnum">${r.fone ? fmtFone(r.fone) : '<span class="muted">sem telefone</span>'}</td>
           <td>${!r.dia ? waBtn(r, c ? 'Enviar de novo' : 'WhatsApp') : ''}</td></tr>`; }).join('') || '<tr><td colspan="9" class="sub">Ninguém neste filtro.</td></tr>'}
       </tbody></table></div>
@@ -1992,7 +1999,7 @@ function renderAtivacao(){
       <div class="fld"><label>Visão</label><div class="ptabs" data-ak="aSub"><button type="button" data-v="lista" aria-pressed="${sub==='lista'}">Revendedores</button><button type="button" data-v="acion" aria-pressed="${sub==='acion'}">Acionados <span class="cnt2">${fI(acionados.length)}</span></button></div></div>
       <div class="fld"><label for="aEr">ER</label><select id="aEr"><option value="">Todas</option>${ers.map((c)=>`<option value="${c}"${c===S.aEr?' selected':''}>${esc(nomeU(c))}</option>`).join('')}</select></div>
       <div class="fld"><label for="aCid">Cidade</label><select id="aCid"><option value="">Todas</option>${cids.map((c)=>`<option${c===S.aCid?' selected':''}>${esc(c)}</option>`).join('')}</select></div>
-      ${sub==='lista' ? `<div class="fld"><label>Situação</label>${seg('aStatus', [['pend','Não responderam'],['resp','Responderam'],['todos','Todos']])}</div>` : ''}
+      ${sub==='lista' ? `<div class="fld"><label>Situação</label>${S.aCont==='sim' ? '<span class="sub" style="min-height:38px;display:flex;align-items:center">Contatados: todos, com a resposta após o contato</span>' : seg('aStatus', [['pend','Não responderam'],['resp','Responderam'],['todos','Todos']])}</div>` : ''}
       <div class="fld"><label for="aAtv">Atividade</label><select id="aAtv"><option value="">I, R e A0</option>${['A0','I','R'].map((a)=>`<option${a===S.aAtv?' selected':''}>${a}</option>`).join('')}</select></div>
       <div class="fld"><label for="aQ">Buscar</label><input type="search" id="aQ" placeholder="Nome ou código" value="${esc(S.aQ||'')}"></div>
       ${sub==='lista' ? `<label class="chk"><input type="checkbox" id="aFone"${S.aFone?' checked':''}> Só com telefone</label>` : ''}
