@@ -666,7 +666,7 @@ const dow = (iso) => DOWL[new Date(iso+'T12:00:00Z').getUTCDay()];
 const esc = (s) => String(s).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ---------- estado
-const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', aEr:'', aCid:'', aStatus:'pend', aAtv:'', aQ:'', aFone:true, aPag:0, aSub:'lista', aCont:'todos', aAcSit:'todos', pPre:'', pIni:'', pFim:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
+const PADRAO = { praca:'SLZ', meta:CFG.meta*100, base:'ano', baseData:CFG.inicio_base, entrega:CFG.entrega_entra, janela:CFG.janela_ritmo, fim:CFG.fim_plano, hub:'meta', er21767:'meta', regra:'media', heat:'resp', view:'plano', gvo:'', loja:'', aEr:'', aCid:'', aStatus:'pend', aAtv:'', aQ:'', aFone:true, aPag:0, aSub:'lista', aCont:'todos', aCDe:'', aCAte:'', aCResp:'todos', aAcSit:'todos', pPre:'', pIni:'', pFim:'', cPer:'ano', cDim:'todas', ePer:'ano', eOff:{}, cTema:null, cLim:12, baseline:CFG.baseline };
 let S = Object.assign({}, PADRAO);
 try { const s = JSON.parse(localStorage.getItem('csat_desafio_estado')||'null'); if (s) S = Object.assign(S, {praca:s.praca||S.praca, heat:s.heat||S.heat, view:(s.view && s.view !== 'premio') ? s.view : S.view}); } catch(e){}
 try { const t = localStorage.getItem('csat_desafio_tema'); if (t) document.documentElement.dataset.theme = t; } catch(e){}
@@ -1920,10 +1920,19 @@ function renderAtivacao(){
   let corpo = '';
   if (sub === 'lista') {
     const soCont = S.aCont === 'sim';
+    // filtro só dos contatados: data do contato (último) e resposta após o contato
+    const filtroCont = (r) => { const d = ac(r).u.slice(0,10);
+      return (!S.aCDe || d >= S.aCDe) && (!S.aCAte || d <= S.aCAte)
+        && (S.aCResp === 'resp' ? respAposContato(r) : S.aCResp === 'sem' ? !r.dia : true); };
     const lst = b2.filter((r)=>(soCont || S.aStatus==='todos' || (S.aStatus==='pend' ? !r.dia : !!r.dia)) && (soCont || !S.aFone || r.fone || S.aStatus==='resp') && busca(r)
-      && (S.aCont !== 'nao' || !ac(r)) && (S.aCont !== 'sim' || ac(r)));
+      && (S.aCont !== 'nao' || !ac(r)) && (S.aCont !== 'sim' || ac(r))
+      && (!soCont || filtroCont(r)));
     const pags = Math.max(1, Math.ceil(lst.length/PG)); S.aPag = Math.min(S.aPag || 0, pags-1);
-    const ord = lst.slice().sort((a,b)=>(!!a.dia - !!b.dia) || (!!ac(a) - !!ac(b)) || a.nome.localeCompare(b.nome));
+    // Contatados: primeiro quem respondeu (após o contato, depois quem já tinha respondido), depois quem não respondeu, na ordem do contato
+    const grupo = (r) => respAposContato(r) ? 0 : r.dia ? 1 : 2;
+    const ord = soCont
+      ? lst.slice().sort((a,b)=>(grupo(a) - grupo(b)) || (ac(a).u < ac(b).u ? -1 : ac(a).u > ac(b).u ? 1 : 0) || a.nome.localeCompare(b.nome))
+      : lst.slice().sort((a,b)=>(!!a.dia - !!b.dia) || (!!ac(a) - !!ac(b)) || a.nome.localeCompare(b.nome));
     const pagina = ord.slice(S.aPag*PG, S.aPag*PG + PG);
     corpo = `
     <section class="card scr">
@@ -1936,6 +1945,12 @@ function renderAtivacao(){
     <section class="card">
       <div class="card-hd"><div class="hl"><span class="icchip t-destructive"><i data-lucide="users"></i></span><div><h2>Revendedores</h2><p>${fI(lst.length)} na lista${soCont ? ` · <b class="c-ok">${fI(lst.filter((r)=>respAposContato(r)).length)} responderam após o contato</b> · <b class="c-bad">${fI(lst.filter((r)=>!r.dia).length)} sem resposta</b>` : ''} · marque a caixa quando entrar em contato (o botão do WhatsApp já marca)</p></div></div>
         ${seg('aCont', [['todos','Todos'],['nao','Não contatados'],['sim','Contatados']])}</div>
+      ${soCont ? `<div class="filter at-f cf" style="padding:0 0 10px"><div class="row">
+        <div class="fld"><label for="aCDe">Contato de</label><input type="date" id="aCDe" value="${esc(S.aCDe||'')}"></div>
+        <div class="fld"><label for="aCAte">até</label><input type="date" id="aCAte" value="${esc(S.aCAte||'')}"></div>
+        <div class="fld"><label>Resposta após o contato</label>${seg('aCResp', [['todos','Todos'],['resp','Respondeu'],['sem','Não respondeu']])}</div>
+        ${S.aCDe || S.aCAte || (S.aCResp && S.aCResp !== 'todos') ? '<button class="btn ghost sm" type="button" id="aCLimpa" style="align-self:flex-end"><i data-lucide="x"></i>Limpar</button>' : ''}
+      </div></div>` : ''}
       <div class="tw"><table class="lst"><thead><tr><th>Contatado</th><th>Revendedor</th><th>Código</th><th>ER</th><th>Cidade</th><th>Ativ.</th><th>Situação</th><th>Telefone</th><th></th></tr></thead><tbody>${
         pagina.map((r)=>{ const c = ac(r); return `<tr${c?' class="ok-row"':''}><td class="cc">${chk(r)}${c?`<span class="muted"> ${fDH(c.u)}${c.a?' · '+esc(c.a):''}</span>`:''}</td><td class="nm"><b>${esc(r.nome)}</b></td><td class="tnum">${esc(r.cod)}</td><td>${esc(nomeU(r.er))}</td><td>${esc(r.cid)}</td><td>${esc(r.atv)}</td>
           <td>${(() => { const nota = r.nota ? ` <span class="muted">nota ${r.nota}</span>` : '';
@@ -2019,6 +2034,9 @@ function renderAtivacao(){
   $('aEr').onchange = (e) => { S.aEr = e.target.value; S.aPag = 0; re(); };
   $('aCid').onchange = (e) => { S.aCid = e.target.value; S.aPag = 0; re(); };
   $('aAtv').onchange = (e) => { S.aAtv = e.target.value; S.aPag = 0; re(); };
+  const fCDe = $('aCDe'); if (fCDe) fCDe.onchange = (e) => { S.aCDe = e.target.value; S.aPag = 0; re(); };
+  const fCAte = $('aCAte'); if (fCAte) fCAte.onchange = (e) => { S.aCAte = e.target.value; S.aPag = 0; re(); };
+  const fCL = $('aCLimpa'); if (fCL) fCL.onclick = () => { S.aCDe = ''; S.aCAte = ''; S.aCResp = 'todos'; S.aPag = 0; re(); };
   const fF = $('aFone'); if (fF) fF.onchange = (e) => { S.aFone = e.target.checked; S.aPag = 0; re(); };
   let tq; $('aQ').oninput = (e) => { clearTimeout(tq); tq = setTimeout(() => { S.aQ = e.target.value; S.aPag = 0; const pos = e.target.selectionStart; re(); const f = $('aQ'); f.focus(); f.setSelectionRange(pos, pos); }, 250); };
   const tS = $('atScript'); if (tS) tS.oninput = (e) => { AT_SCRIPT = e.target.value; lsA.set('csat_ativ_script', AT_SCRIPT); const pv = $('atPrev'); if (pv && AT._pag1) pv.textContent = msg(AT._pag1);
