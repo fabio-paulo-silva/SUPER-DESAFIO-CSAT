@@ -27,6 +27,25 @@ jobs:
           mkdir -p _site
           cp index.html ativacao.html motor.js dados.js ativacao_cripto.js planilha.js uso.js _site/
           touch _site/.nojekyll
+      # A URL do Apps Script e a chave ficam nos segredos do repositório (Settings > Secrets and variables > Actions),
+      # não no código. Sem os segredos a publicação para aqui e o site anterior continua no ar.
+      - name: Configurar a planilha (segredos)
+        env:
+          PLANILHA_URL: ${{ secrets.PULSAR_PLANILHA_URL }}
+          PLANILHA_CHAVE: ${{ secrets.PULSAR_PLANILHA_CHAVE }}
+        run: |
+          if [ -z "$PLANILHA_URL" ] || [ -z "$PLANILHA_CHAVE" ]; then
+            echo "::error::Crie os segredos PULSAR_PLANILHA_URL e PULSAR_PLANILHA_CHAVE em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os, pathlib
+          p = pathlib.Path("_site/planilha.js")
+          t = p.read_text(encoding="utf-8")
+          t = t.replace("__PULSAR_PLANILHA_URL__", os.environ["PLANILHA_URL"]).replace("__PULSAR_PLANILHA_CHAVE__", os.environ["PLANILHA_CHAVE"])
+          p.write_text(t, encoding="utf-8")
+          print("configurado:", p)
+          PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -24,3 +24,8 @@ Depois, em **Actions**, rode de novo o último "Publicar no GitHub Pages" (ou fa
    git push
    ```
 4. Em 1 a 2 minutos o site atualiza.
+
+## Planilha (segredos)
+A URL do Apps Script e a chave não ficam no código. Elas ficam em GitHub > Settings > Secrets and variables > Actions,
+nos segredos `PULSAR_PLANILHA_URL` e `PULSAR_PLANILHA_CHAVE` (os mesmos valores do PULSAR), e a publicação coloca os
+valores no `planilha.js` do site. Sem os segredos a publicação falha e o site anterior continua no ar.

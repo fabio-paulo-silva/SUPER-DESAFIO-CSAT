@@ -1,6 +1,8 @@
 // SUPER DESAFIO CSAT - planilha dos acionamentos (mesma planilha e Apps Script do PULSAR, aba acionamentos_csat).
-// A chave barra gravações por acaso; não é senha forte (fica visível no site, como no PULSAR).
-window.CSAT_PLANILHA = {
-  "url": "https://script.google.com/macros/s/AKfycbxGdHjf5dv2LXH7d5HDwDH5KVuEFTkLenMEbZqFSLT8vbtIbPtpiNaO7xPTJ6quuAOp8g/exec",
-  "chave": "pulsar-gn-2026"
-};
+// Segurança: a URL do Apps Script e a chave NÃO ficam no repositório. Os marcadores abaixo são trocados na
+// publicação (GitHub Actions) pelos segredos PULSAR_PLANILHA_URL e PULSAR_PLANILHA_CHAVE deste repositório.
+// Sem os segredos (ex.: painel aberto no computador), a planilha fica desligada.
+window.CSAT_PLANILHA = (function () {
+  var url = '__PULSAR_PLANILHA_URL__', chave = '__PULSAR_PLANILHA_CHAVE__';
+  return url.indexOf('__') === 0 ? null : { url: url, chave: chave };
+})();
